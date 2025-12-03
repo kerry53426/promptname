@@ -1,14 +1,25 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Ensure API key is present
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // --- Type Definitions for Web Speech API ---
 export interface IWindow extends Window {
   webkitSpeechRecognition: any;
   SpeechRecognition: any;
 }
+
+// Helper to safely get the API key
+const getApiKey = () => {
+  // Per guidelines, strictly use process.env.API_KEY.
+  // We check for process existence to be safe in environments where it might not be shimmed yet,
+  // although guidelines say assume it's accessible and valid.
+  if (typeof process !== 'undefined' && process.env?.API_KEY) {
+    return process.env.API_KEY;
+  }
+  return '';
+};
+
+// Initialize AI Client safely
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 /**
  * Modifies or generates text based on input text and a prompt.
@@ -111,7 +122,7 @@ export const modifyImageWithGemini = async (
 
 /**
  * Generates an image from text from scratch (Text-to-Image).
- * Updated to support negative prompts.
+ * Updated to support negative prompts and Imagen models.
  */
 export const generateImageFromText = async (
   userPrompt: string,
@@ -120,6 +131,26 @@ export const generateImageFromText = async (
   options?: { temperature?: number; seed?: number; negativePrompt?: string }
 ): Promise<{ text?: string; imageBase64?: string; mediaMimeType?: string }> => {
   try {
+    // Handle Imagen Models
+    if (modelName.toLowerCase().includes('imagen')) {
+        const response = await ai.models.generateImages({
+            model: modelName,
+            prompt: userPrompt,
+            config: {
+                numberOfImages: 1,
+                aspectRatio: aspectRatio,
+                outputMimeType: 'image/jpeg',
+            }
+        });
+        
+        const imageBytes = response.generatedImages?.[0]?.image?.imageBytes;
+        if (imageBytes) {
+            return { imageBase64: imageBytes, mediaMimeType: 'image/jpeg' };
+        }
+        return {};
+    }
+
+    // Handle Gemini Models (Nano Banana)
     const config: any = {
       imageConfig: {
         aspectRatio: aspectRatio
@@ -129,8 +160,7 @@ export const generateImageFromText = async (
     if (options?.temperature !== undefined) config.temperature = options.temperature;
     if (options?.seed !== undefined) config.seed = options.seed;
 
-    // Append negative prompt to the main prompt as an instruction, 
-    // as standardized negative_prompt param availability varies by model version in the unified client.
+    // Append negative prompt to the main prompt as an instruction for models that don't support it in config
     let finalPrompt = userPrompt;
     if (options?.negativePrompt && options.negativePrompt.trim()) {
         finalPrompt += `\n\n(Negative prompt / Exclude elements: ${options.negativePrompt})`;
@@ -217,7 +247,7 @@ export const generateVideoFromImage = async (
     if (signal?.aborted) throw new Error("使用者取消了影片生成。");
 
     // Create a NEW instance to ensure the latest key from aistudio is used (Fix race condition)
-    const freshAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
 
     // 2. Start the operation
     if (onProgress) onProgress('正在初始化 Veo 模型...');
@@ -261,9 +291,9 @@ export const generateVideoFromImage = async (
         throw new Error("Video generation completed but no URI returned.");
     }
     
-    // 5. Fetch the video blob (to handle CORS/Auth if needed, though SDK usually gives a GCS link)
-    // The guidelines say: fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-    const downloadUrl = `${videoUri}&key=${process.env.API_KEY}`;
+    // 5. Fetch the video blob
+    // Guidelines require appending API Key from process.env explicitly
+    const downloadUrl = `${videoUri}&key=${getApiKey()}`;
     
     // Return the URL directly. The <video> tag can usually handle it if valid.
     return downloadUrl;
