@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { fileToGenerativePart, modifyImageWithGemini, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { IMAGE_PROMPTS, IMAGE_MODELS, ASPECT_RATIOS, IMAGE_CATEGORIES } from '../constants';
-import { ArrowRight, Image as ImageIcon, Upload, Download, Wand2, Settings2, Crop, Clock, Trash2, Plus, X, Sparkles, Eye, Palette, CheckCircle2, Zap, Lightbulb, SplitSquareHorizontal, Search, Mic, MicOff, Dices } from 'lucide-react';
+import { ArrowRight, Image as ImageIcon, Upload, Download, Wand2, Settings2, Crop, Clock, Trash2, Plus, X, Sparkles, Eye, Palette, CheckCircle2, Zap, Lightbulb, SplitSquareHorizontal, Search, Mic, MicOff, Dices, Waves } from 'lucide-react';
 
 interface ImagePlaygroundProps {
   onError: (msg: string) => void;
@@ -34,6 +34,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
   // New features
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
 
   // AI Suggestions
@@ -48,6 +49,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('promptcraft_image_model') || IMAGE_MODELS[0].id);
   const [selectedRatio, setSelectedRatio] = useState(() => localStorage.getItem('promptcraft_image_ratio') || ASPECT_RATIOS[0].id);
@@ -64,6 +66,15 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
     setPreviewUrls(urls);
     return () => urls.forEach(url => URL.revokeObjectURL(url));
   }, [selectedFiles]);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const [history, setHistory] = useState<string[]>(() => {
     try {
@@ -225,7 +236,16 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
       }
   };
 
-  const startListening = () => {
+  const toggleListening = () => {
+      if (isListening) {
+          if (recognitionRef.current) {
+              recognitionRef.current.stop();
+          }
+          setIsListening(false);
+          setInterimTranscript('');
+          return;
+      }
+
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
           onError("您的瀏覽器不支援語音輸入功能。");
           return;
@@ -233,19 +253,43 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
 
       const SpeechRecognition = (window as unknown as IWindow).webkitSpeechRecognition || (window as unknown as IWindow).SpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'zh-TW';
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognitionRef.current = recognition;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
+      recognition.lang = 'zh-TW';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+          setIsListening(true);
+          setInterimTranscript('');
+      };
+
+      recognition.onend = () => {
+          setIsListening(false);
+          setInterimTranscript('');
+      };
+
       recognition.onerror = (event: any) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
       };
+
       recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setPrompt(prev => prev + (prev ? ' ' : '') + transcript);
+          let finalTranscript = '';
+          let interim = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                  finalTranscript += event.results[i][0].transcript;
+              } else {
+                  interim += event.results[i][0].transcript;
+              }
+          }
+
+          if (finalTranscript) {
+              setPrompt(prev => prev + (prev ? ' ' : '') + finalTranscript);
+          }
+          setInterimTranscript(interim);
       };
 
       recognition.start();
@@ -262,11 +306,9 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
 
   return (
     <div className="flex flex-col h-full gap-6">
-      
-      {/* Main Visual Area */}
+      {/* Main Visual Area (unchanged layout, see previous component) */}
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[400px]">
-        
-        {/* Input Area */}
+        {/* Input Area (Left) */}
         <div className="bg-gradient-to-br from-white/90 to-white/50 dark:from-slate-800/90 dark:to-slate-800/50 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 rounded-3xl p-5 flex flex-col shadow-2xl shadow-rose-500/10 dark:shadow-rose-900/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-rose-500/20">
           <div className="flex justify-between items-center text-rose-900/60 dark:text-rose-300/60 text-xs font-bold uppercase tracking-wider mb-3 px-2">
             <span>原始圖片 ({selectedFiles.length}/4)</span>
@@ -290,7 +332,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
             </div>
           </div>
           
-          {/* Preview Controls Panel */}
+          {/* Preview Controls Panel (omitted for brevity, same as existing) */}
           {showPreviewEditor && selectedFiles.length > 0 && (
             <div className="mb-4 p-4 bg-white/60 dark:bg-slate-700/60 backdrop-blur-md border border-rose-100 dark:border-rose-900 rounded-2xl animate-in slide-in-from-top-2 shadow-inner">
                <div className="flex flex-col gap-4">
@@ -636,6 +678,25 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
                   className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl px-5 py-4 shadow-inner focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none resize-none min-h-[80px] leading-relaxed transition-all placeholder:text-slate-400"
                   rows={2}
                 />
+                
+                {/* Real-time Voice Transcription Overlay */}
+                {isListening && (
+                    <div className="absolute top-full left-0 right-0 mt-2 z-20 bg-white/90 dark:bg-slate-800/90 backdrop-blur-lg border border-red-200 dark:border-red-900 rounded-xl p-3 shadow-lg animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="relative flex items-center justify-center w-4 h-4">
+                                <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </div>
+                            <span className="text-xs font-bold text-red-500">正在聆聽...</span>
+                            <div className="ml-auto">
+                                <Waves size={16} className="text-red-400 animate-pulse" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 italic min-h-[1.5em]">
+                            {interimTranscript || "請說話..."}
+                        </p>
+                    </div>
+                )}
              </div>
              
              {/* Toolbar */}
@@ -665,8 +726,8 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
                        <Dices size={16} />
                    </button>
                    <button 
-                      onClick={startListening}
-                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-rose-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-700'}`}
+                      onClick={toggleListening}
+                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-white bg-red-500 border-red-600 animate-pulse shadow-red-500/30' : 'text-slate-500 hover:text-rose-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-700'}`}
                       title={isListening ? "停止錄音" : "語音輸入"}
                    >
                        {isListening ? <MicOff size={16} /> : <Mic size={16} />}

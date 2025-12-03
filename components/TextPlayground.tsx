@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
 import { modifyTextWithGemini, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { TEXT_PROMPTS, SAMPLE_TEXT, TEXT_MODELS, TEXT_CATEGORIES, TEXT_TONES } from '../constants';
-import { ArrowRight, Copy, RefreshCw, Wand2, Settings2, Clock, Trash2, Sparkles, MessageSquareQuote, Plus, X, AlignLeft, Check, Volume2, Download, Search, Mic, MicOff, Dices, Lightbulb, SplitSquareHorizontal } from 'lucide-react';
+import { ArrowRight, Copy, RefreshCw, Wand2, Settings2, Clock, Trash2, Sparkles, MessageSquareQuote, Plus, X, AlignLeft, Check, Volume2, Download, Search, Mic, MicOff, Dices, Lightbulb, SplitSquareHorizontal, Waves } from 'lucide-react';
 
 interface TextPlaygroundProps {
   onError: (msg: string) => void;
@@ -69,6 +69,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
   // New features state
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
   
   // AI Suggestions
   const [suggestionCategories, setSuggestionCategories] = useState<SuggestionCategory[]>([]);
@@ -78,6 +79,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
   const [isOptimizing, setIsOptimizing] = useState(false);
 
   const promptInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
   
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('promptcraft_text_model') || TEXT_MODELS[0].id;
@@ -101,6 +103,15 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
     }
   }, [incomingPrompt]);
   
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
   const [history, setHistory] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('promptcraft_text_history');
@@ -276,7 +287,16 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
       }
   };
 
-  const startListening = () => {
+  const toggleListening = () => {
+      if (isListening) {
+          if (recognitionRef.current) {
+              recognitionRef.current.stop();
+          }
+          setIsListening(false);
+          setInterimTranscript('');
+          return;
+      }
+
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
           onError("您的瀏覽器不支援語音輸入功能。");
           return;
@@ -284,19 +304,43 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
 
       const SpeechRecognition = (window as unknown as IWindow).webkitSpeechRecognition || (window as unknown as IWindow).SpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'zh-TW';
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognitionRef.current = recognition;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
+      recognition.lang = 'zh-TW';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+          setIsListening(true);
+          setInterimTranscript('');
+      };
+
+      recognition.onend = () => {
+          setIsListening(false);
+          setInterimTranscript('');
+      };
+
       recognition.onerror = (event: any) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
       };
+
       recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setPrompt(prev => prev + (prev ? ' ' : '') + transcript);
+          let finalTranscript = '';
+          let interim = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                  finalTranscript += event.results[i][0].transcript;
+              } else {
+                  interim += event.results[i][0].transcript;
+              }
+          }
+
+          if (finalTranscript) {
+              setPrompt(prev => prev + (prev ? ' ' : '') + finalTranscript);
+          }
+          setInterimTranscript(interim);
       };
 
       recognition.start();
@@ -648,6 +692,25 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
                   placeholder={inputTexts.length > 1 ? "✨ 描述如何比較或融合這些文字... (例如：比較兩者的差異)" : "✨ 希望 AI 如何修改文字？"}
                   className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl px-5 py-4 shadow-inner focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400"
                 />
+                
+                {/* Real-time Voice Transcription Overlay */}
+                {isListening && (
+                    <div className="absolute top-full left-0 right-0 mt-2 z-20 bg-white/90 dark:bg-slate-800/90 backdrop-blur-lg border border-red-200 dark:border-red-900 rounded-xl p-3 shadow-lg animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="relative flex items-center justify-center w-4 h-4">
+                                <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </div>
+                            <span className="text-xs font-bold text-red-500">正在聆聽...</span>
+                            <div className="ml-auto">
+                                <Waves size={16} className="text-red-400 animate-pulse" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 italic min-h-[1.5em]">
+                            {interimTranscript || "請說話..."}
+                        </p>
+                    </div>
+                )}
              </div>
              
              {/* New Toolbar */}
@@ -677,8 +740,8 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
                        <Dices size={16} />
                    </button>
                    <button 
-                      onClick={startListening}
-                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-indigo-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-700'}`}
+                      onClick={toggleListening}
+                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-white bg-red-500 border-red-600 animate-pulse shadow-red-500/30' : 'text-slate-500 hover:text-indigo-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-700'}`}
                       title={isListening ? "停止錄音" : "語音輸入"}
                    >
                        {isListening ? <MicOff size={16} /> : <Mic size={16} />}
