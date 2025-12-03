@@ -1,12 +1,12 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
-import { fileToGenerativePart, modifyImageWithGemini, IWindow } from '../services/geminiService';
+import { fileToGenerativePart, modifyImageWithGemini, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { IMAGE_PROMPTS, IMAGE_MODELS, ASPECT_RATIOS, IMAGE_CATEGORIES } from '../constants';
 import { ArrowRight, Image as ImageIcon, Upload, Download, Wand2, Settings2, Crop, Clock, Trash2, Plus, X, Sparkles, Eye, Palette, CheckCircle2, Zap, Lightbulb, SplitSquareHorizontal, Search, Mic, MicOff, Dices } from 'lucide-react';
 
 interface ImagePlaygroundProps {
   onError: (msg: string) => void;
+  incomingPrompt?: string;
 }
 
 // Filter Presets
@@ -20,7 +20,7 @@ const FILTER_PRESETS = [
   { id: 'warm', label: '暖陽', prompt: '模擬「黃金時刻」的溫暖光線，增加畫面中的暖色調與柔和感。', filters: { grayscale: 0, sepia: 30, contrast: 100, brightness: 105, saturate: 110 } }
 ];
 
-export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => {
+export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incomingPrompt }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [prompt, setPrompt] = useState('');
@@ -34,6 +34,13 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => 
   // New features
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  // AI Suggestions
+  const [suggestionCategories, setSuggestionCategories] = useState<SuggestionCategory[]>([]);
+  const [activeSuggestionCategory, setActiveSuggestionCategory] = useState(0);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Preview / Editor State
   const [showPreviewEditor, setShowPreviewEditor] = useState(false);
@@ -47,6 +54,10 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => 
 
   useEffect(() => { localStorage.setItem('promptcraft_image_model', selectedModel); }, [selectedModel]);
   useEffect(() => { localStorage.setItem('promptcraft_image_ratio', selectedRatio); }, [selectedRatio]);
+
+  useEffect(() => {
+    if (incomingPrompt) applyTemplate(incomingPrompt);
+  }, [incomingPrompt]);
 
   useEffect(() => {
     const urls = selectedFiles.map(file => URL.createObjectURL(file));
@@ -101,6 +112,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => 
     setOutputImage(null);
     setOutputText(null);
     addToHistory(prompt);
+    setShowSuggestions(false); // Hide suggestions
 
     try {
       const imagesPayload = await Promise.all(selectedFiles.map(async (file) => {
@@ -121,6 +133,19 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => 
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleMagicOptimize = async () => {
+      if (!prompt.trim()) return;
+      setIsOptimizing(true);
+      try {
+          const optimized = await optimizeUserPrompt(prompt, 'image');
+          setPrompt(optimized);
+      } catch (e) {
+          onError("提示詞優化失敗");
+      } finally {
+          setIsOptimizing(false);
+      }
   };
 
   const applyTemplate = (templatePrompt: string) => {
@@ -174,6 +199,30 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => 
       const random = IMAGE_PROMPTS[Math.floor(Math.random() * IMAGE_PROMPTS.length)];
       setSelectedCategory(random.category);
       applyTemplate(random.prompt);
+  };
+
+  const handleAnalyzeSuggestions = async () => {
+      if (selectedFiles.length === 0) {
+          onError("請先上傳圖片，才能進行分析。");
+          return;
+      }
+      setIsAnalyzing(true);
+      setShowSuggestions(true);
+      setSuggestionCategories([]);
+      setActiveSuggestionCategory(0);
+      try {
+          const imagesPayload = await Promise.all(selectedFiles.map(async (file) => {
+              const base64 = await fileToGenerativePart(file);
+              return { base64, mimeType: file.type };
+          }));
+          const results = await analyzeContentForSuggestions('image', imagesPayload);
+          setSuggestionCategories(results);
+      } catch(e) {
+          onError("分析失敗，請稍後再試。");
+          setShowSuggestions(false);
+      } finally {
+          setIsAnalyzing(false);
+      }
   };
 
   const startListening = () => {
@@ -389,6 +438,63 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => 
         </div>
       </div>
 
+      {/* Suggestion Panel Overlay */}
+      {showSuggestions && (
+          <div className="relative w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-rose-200 dark:border-rose-800 rounded-2xl p-4 animate-in slide-in-from-top-4 mb-4 shadow-xl">
+              <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-rose-700 dark:text-rose-300 flex items-center gap-2">
+                      <Lightbulb size={16} className="text-yellow-500" /> AI 深度分析顧問：50 種修圖策略
+                  </h3>
+                  <button onClick={() => setShowSuggestions(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
+                      <X size={14} />
+                  </button>
+              </div>
+              
+              {isAnalyzing ? (
+                  <div className="flex justify-center items-center py-8 gap-2 text-rose-600 dark:text-rose-400 font-medium text-xs">
+                      <span className="animate-spin">⌛</span> 正在深入分析圖片並生成 50 種建議，請稍候...
+                  </div>
+              ) : (
+                  <div className="flex flex-col gap-4">
+                      {/* Category Tabs */}
+                      <div className="flex flex-wrap gap-2">
+                          {suggestionCategories.map((cat, index) => (
+                              <button
+                                  key={index}
+                                  onClick={() => setActiveSuggestionCategory(index)}
+                                  className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${
+                                      activeSuggestionCategory === index
+                                      ? 'bg-rose-500 text-white shadow-md'
+                                      : 'bg-white/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/30'
+                                  }`}
+                              >
+                                  {cat.categoryName}
+                              </button>
+                          ))}
+                      </div>
+
+                      {/* Suggestions Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                          {suggestionCategories[activeSuggestionCategory]?.items.map((s, i) => (
+                              <button
+                                  key={i}
+                                  onClick={() => {
+                                      applyTemplate(s.prompt);
+                                      setShowSuggestions(false);
+                                  }}
+                                  className="flex flex-col items-start p-3 bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 hover:border-rose-400 dark:hover:border-rose-500 rounded-xl transition-all hover:shadow-md hover:-translate-y-1 text-left h-full group"
+                              >
+                                  <span className="text-xl mb-1 group-hover:scale-110 transition-transform duration-300">{s.emoji}</span>
+                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight mb-1">{s.title}</span>
+                                  <span className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-2">{s.description}</span>
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+              )}
+          </div>
+      )}
+
       {/* Controls */}
       <div className="bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl rounded-[2rem] p-6 border border-white/50 dark:border-slate-700/50 shadow-2xl shadow-rose-500/10 dark:shadow-rose-900/20 transition-transform duration-300 hover:shadow-rose-500/15">
         <div className="flex flex-col gap-4">
@@ -519,44 +625,64 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError }) => 
                </div>
            </div>
 
-          <div className="flex gap-3 items-start">
-             <div className="flex-grow relative group">
+          <div className="flex flex-col gap-3">
+             <div className="relative group">
                 <textarea
                   ref={promptInputRef}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleExecute(); } }}
                   placeholder="✨ 描述如何修改圖片... 例如：「將文字轉為資訊圖表」"
-                  className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl pl-5 pr-20 py-3.5 shadow-inner focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none resize-none min-h-[60px] leading-relaxed transition-all placeholder:text-slate-400"
+                  className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl px-5 py-4 shadow-inner focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none resize-none min-h-[80px] leading-relaxed transition-all placeholder:text-slate-400"
                   rows={2}
                 />
-                 {/* Voice Input & Dice Buttons */}
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+             </div>
+             
+             {/* Toolbar */}
+             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                   <button 
+                      onClick={handleMagicOptimize}
+                      disabled={isOptimizing}
+                      className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${isOptimizing ? 'text-rose-600 bg-rose-100 border-rose-200 animate-pulse' : 'text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-700 shadow-sm'}`}
+                      title="魔術棒：優化提示詞"
+                   >
+                       <Wand2 size={14} /> 魔法優化
+                   </button>
+                   <button 
+                      onClick={handleAnalyzeSuggestions}
+                      disabled={isAnalyzing}
+                      className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${isAnalyzing ? 'text-rose-600 bg-rose-100 border-rose-200 animate-pulse' : 'text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-600 dark:hover:text-rose-400 shadow-sm'}`}
+                      title="AI 深度分析顧問"
+                   >
+                       <Lightbulb size={14} className="text-yellow-500" /> 深度分析
+                   </button>
                    <button 
                       onClick={handleRandomPrompt}
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors"
+                      className="p-2 text-slate-500 hover:text-rose-600 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-700 rounded-lg transition-all shadow-sm"
                       title="隨機靈感"
                    >
                        <Dices size={16} />
                    </button>
                    <button 
                       onClick={startListening}
-                      className={`p-2 rounded-lg transition-all ${isListening ? 'text-red-500 bg-red-50 animate-pulse' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30'}`}
+                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-rose-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-700'}`}
                       title={isListening ? "停止錄音" : "語音輸入"}
                    >
                        {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                    </button>
                 </div>
+
+                <Button 
+                    onClick={handleExecute} 
+                    isLoading={isProcessing} 
+                    accentColor="rose"
+                    disabled={selectedFiles.length === 0 || !prompt} 
+                    className="w-full sm:w-auto px-8 py-2.5 shadow-lg shadow-rose-500/20"
+                >
+                    生成 <ArrowRight size={16} className="ml-2" />
+                </Button>
              </div>
-             <Button 
-                onClick={handleExecute} 
-                isLoading={isProcessing} 
-                accentColor="rose"
-                disabled={selectedFiles.length === 0 || !prompt} 
-                className="h-[60px] px-8 shadow-lg shadow-rose-500/20"
-             >
-                生成 <ArrowRight size={16} className="ml-2" />
-             </Button>
           </div>
         </div>
       </div>

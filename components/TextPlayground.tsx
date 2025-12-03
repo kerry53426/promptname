@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
-import { modifyTextWithGemini, IWindow } from '../services/geminiService';
+import { modifyTextWithGemini, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { TEXT_PROMPTS, SAMPLE_TEXT, TEXT_MODELS, TEXT_CATEGORIES, TEXT_TONES } from '../constants';
-import { ArrowRight, Copy, RefreshCw, Wand2, Settings2, Clock, Trash2, Sparkles, MessageSquareQuote, Plus, X, AlignLeft, Check, Volume2, Download, Search, Mic, MicOff, Dices } from 'lucide-react';
+import { ArrowRight, Copy, RefreshCw, Wand2, Settings2, Clock, Trash2, Sparkles, MessageSquareQuote, Plus, X, AlignLeft, Check, Volume2, Download, Search, Mic, MicOff, Dices, Lightbulb, SplitSquareHorizontal } from 'lucide-react';
 
 interface TextPlaygroundProps {
   onError: (msg: string) => void;
+  incomingPrompt?: string;
 }
 
 // Simple markdown renderer component
@@ -55,7 +55,7 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
-export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
+export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomingPrompt }) => {
   // Now supports multiple text inputs
   const [inputTexts, setInputTexts] = useState<string[]>([SAMPLE_TEXT]);
   const [prompt, setPrompt] = useState('');
@@ -64,11 +64,19 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showDiff, setShowDiff] = useState(false); // Toggle for Diff View
   
   // New features state
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
   
+  // AI Suggestions
+  const [suggestionCategories, setSuggestionCategories] = useState<SuggestionCategory[]>([]);
+  const [activeSuggestionCategory, setActiveSuggestionCategory] = useState(0);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
   const promptInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedModel, setSelectedModel] = useState(() => {
@@ -86,6 +94,12 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
   useEffect(() => {
     localStorage.setItem('promptcraft_text_tone', selectedTone);
   }, [selectedTone]);
+
+  useEffect(() => {
+    if (incomingPrompt) {
+        applyTemplate(incomingPrompt);
+    }
+  }, [incomingPrompt]);
   
   const [history, setHistory] = useState<string[]>(() => {
     try {
@@ -151,6 +165,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
     setIsProcessing(true);
     setOutputText('');
     addToHistory(prompt);
+    setShowSuggestions(false); // Hide suggestions on execute
 
     let finalPrompt = prompt;
     if (selectedTone !== 'default') {
@@ -170,6 +185,19 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleMagicOptimize = async () => {
+      if (!prompt.trim()) return;
+      setIsOptimizing(true);
+      try {
+          const optimized = await optimizeUserPrompt(prompt, 'text');
+          setPrompt(optimized);
+      } catch (e) {
+          onError("提示詞優化失敗");
+      } finally {
+          setIsOptimizing(false);
+      }
   };
 
   const handleCopy = () => {
@@ -222,11 +250,30 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
   };
   
   const handleRandomPrompt = () => {
-      // Pick from visible prompts only to avoid confusion, or all if preferred.
-      // Let's pick from ALL prompts to be more "surprising"
       const random = TEXT_PROMPTS[Math.floor(Math.random() * TEXT_PROMPTS.length)];
       setSelectedCategory(random.category); // Switch to that category
       applyTemplate(random.prompt);
+  };
+
+  const handleAnalyzeSuggestions = async () => {
+      const validTexts = inputTexts.filter(t => t.trim() !== '');
+      if (validTexts.length === 0) {
+          onError("請先輸入文字內容，才能進行分析。");
+          return;
+      }
+      setIsAnalyzing(true);
+      setShowSuggestions(true);
+      setSuggestionCategories([]);
+      setActiveSuggestionCategory(0);
+      try {
+          const results = await analyzeContentForSuggestions('text', validTexts);
+          setSuggestionCategories(results);
+      } catch(e) {
+          onError("分析失敗，請稍後再試。");
+          setShowSuggestions(false);
+      } finally {
+          setIsAnalyzing(false);
+      }
   };
 
   const startListening = () => {
@@ -276,10 +323,10 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Top Section: Split View */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow">
+      <div className={`grid grid-cols-1 ${showDiff && inputTexts.length === 1 && outputText ? 'lg:grid-cols-2' : 'lg:grid-cols-2'} gap-6 flex-grow`}>
         
         {/* Input Column */}
-        <div className="flex flex-col gap-2 group/col h-full">
+        <div className={`flex flex-col gap-2 group/col h-full ${showDiff && outputText ? 'lg:block' : ''}`}>
           <div className="flex justify-between items-center text-indigo-900/60 dark:text-indigo-300/60 text-xs font-bold uppercase tracking-wider px-2">
             <span>輸入文字 ({inputTexts.length})</span>
             <div className="flex gap-2">
@@ -291,7 +338,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
                         <RefreshCw size={10} /> 重置範例
                     </button>
                 )}
-                {inputTexts.length < 4 && (
+                {inputTexts.length < 4 && !showDiff && (
                      <button 
                         onClick={addTextBlock}
                         className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-800/50 px-2 py-1 rounded-lg flex items-center gap-1 transition-all text-[10px] font-bold"
@@ -308,13 +355,13 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
                     <textarea
                     value={text}
                     onChange={(e) => updateTextBlock(index, e.target.value)}
-                    className="w-full h-full bg-gradient-to-br from-white/90 to-white/50 dark:from-slate-800/90 dark:to-slate-800/50 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 rounded-3xl p-6 text-slate-700 dark:text-slate-200 shadow-2xl shadow-indigo-500/10 dark:shadow-indigo-900/20 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none resize-none transition-all placeholder-slate-400 text-base leading-relaxed"
+                    className={`w-full h-full bg-gradient-to-br from-white/90 to-white/50 dark:from-slate-800/90 dark:to-slate-800/50 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 rounded-3xl p-6 text-slate-700 dark:text-slate-200 shadow-2xl shadow-indigo-500/10 dark:shadow-indigo-900/20 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none resize-none transition-all placeholder-slate-400 text-base leading-relaxed ${showDiff && outputText ? 'border-r-0 rounded-r-none' : ''}`}
                     placeholder={`[文本 ${index + 1}] 請在此貼上文字...`}
                     />
                     <div className="absolute bottom-2 right-4 text-[10px] text-slate-400 font-mono">
                          {text.length} 字
                     </div>
-                    {inputTexts.length > 1 && (
+                    {inputTexts.length > 1 && !showDiff && (
                         <div className="absolute top-2 right-2 flex gap-2">
                             <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold px-2 py-1 rounded-md">
                                 文本 {index + 1}
@@ -329,7 +376,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
                     )}
                 </div>
              ))}
-             {inputTexts.length < 4 && inputTexts.length > 1 && (
+             {inputTexts.length < 4 && inputTexts.length > 1 && !showDiff && (
                  <button onClick={addTextBlock} className="w-full py-3 border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl text-indigo-400 dark:text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-300 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-sm font-bold flex items-center justify-center gap-2">
                      <Plus size={16} /> 點擊新增下一段文字
                  </button>
@@ -338,10 +385,20 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
         </div>
 
         {/* Output Column */}
-        <div className="flex flex-col gap-2 h-full">
+        <div className={`flex flex-col gap-2 h-full ${showDiff && outputText ? 'lg:pl-0' : ''}`}>
            <div className="flex justify-between items-center text-indigo-900/60 dark:text-indigo-300/60 text-xs font-bold uppercase tracking-wider px-2">
             <span>AI 產出</span>
             <div className="flex items-center gap-2">
+                {outputText && inputTexts.length === 1 && (
+                    <button
+                        onClick={() => setShowDiff(!showDiff)}
+                        className={`px-2 py-1 rounded-lg flex items-center gap-1 transition-all text-[10px] font-medium border ${showDiff ? 'bg-indigo-100 text-indigo-600 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800' : 'bg-transparent text-slate-500 border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        title="開啟比對模式 (左右對照)"
+                    >
+                        <SplitSquareHorizontal size={10} />
+                        {showDiff ? '比對模式: 開' : '比對模式: 關'}
+                    </button>
+                )}
                 {outputText && (
                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md text-[10px] font-mono text-slate-500 dark:text-slate-400 mr-2">
                         <AlignLeft size={10} />
@@ -375,7 +432,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
                 )}
             </div>
           </div>
-          <div className={`relative flex-grow w-full bg-gradient-to-br from-white/90 to-white/50 dark:from-slate-800/90 dark:to-slate-800/50 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 rounded-3xl p-6 text-slate-700 dark:text-slate-200 shadow-2xl shadow-indigo-500/10 dark:shadow-indigo-900/20 overflow-y-auto transition-all duration-300 hover:-translate-y-1 hover:shadow-indigo-500/20 ${!outputText ? 'flex items-center justify-center' : ''}`}>
+          <div className={`relative flex-grow w-full bg-gradient-to-br from-white/90 to-white/50 dark:from-slate-800/90 dark:to-slate-800/50 backdrop-blur-2xl border border-white/50 dark:border-slate-700/50 rounded-3xl p-6 text-slate-700 dark:text-slate-200 shadow-2xl shadow-indigo-500/10 dark:shadow-indigo-900/20 overflow-y-auto transition-all duration-300 hover:-translate-y-1 hover:shadow-indigo-500/20 ${!outputText ? 'flex items-center justify-center' : ''} ${showDiff && outputText ? 'border-l-0 rounded-l-none' : ''}`}>
              {isProcessing ? (
                <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-300">
                  <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 rounded-full shadow-inner relative overflow-hidden">
@@ -394,6 +451,63 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
           </div>
         </div>
       </div>
+
+      {/* Suggestion Panel Overlay */}
+      {showSuggestions && (
+          <div className="relative w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-indigo-200 dark:border-indigo-800 rounded-2xl p-4 animate-in slide-in-from-top-4 mb-4 shadow-xl">
+              <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                      <Lightbulb size={16} className="text-yellow-500" /> AI 深度分析顧問：30 種優化策略
+                  </h3>
+                  <button onClick={() => setShowSuggestions(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
+                      <X size={14} />
+                  </button>
+              </div>
+              
+              {isAnalyzing ? (
+                  <div className="flex justify-center items-center py-8 gap-2 text-indigo-600 dark:text-indigo-400 font-medium text-xs">
+                      <span className="animate-spin">⌛</span> 正在為您生成深度分析與改寫策略，請稍候...
+                  </div>
+              ) : (
+                  <div className="flex flex-col gap-4">
+                      {/* Category Tabs */}
+                      <div className="flex flex-wrap gap-2">
+                          {suggestionCategories.map((cat, index) => (
+                              <button
+                                  key={index}
+                                  onClick={() => setActiveSuggestionCategory(index)}
+                                  className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${
+                                      activeSuggestionCategory === index
+                                      ? 'bg-indigo-500 text-white shadow-md'
+                                      : 'bg-white/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'
+                                  }`}
+                              >
+                                  {cat.categoryName}
+                              </button>
+                          ))}
+                      </div>
+
+                      {/* Suggestions Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                          {suggestionCategories[activeSuggestionCategory]?.items.map((s, i) => (
+                              <button
+                                  key={i}
+                                  onClick={() => {
+                                      applyTemplate(s.prompt);
+                                      setShowSuggestions(false);
+                                  }}
+                                  className="flex flex-col items-start p-3 bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-xl transition-all hover:shadow-md hover:-translate-y-1 text-left h-full group"
+                              >
+                                  <span className="text-xl mb-1 group-hover:scale-110 transition-transform duration-300">{s.emoji}</span>
+                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight mb-1">{s.title}</span>
+                                  <span className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-2">{s.description}</span>
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+              )}
+          </div>
+      )}
 
       {/* Bottom Section: Controls */}
       <div className="bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl rounded-[2rem] p-6 border border-white/50 dark:border-slate-700/50 shadow-2xl shadow-indigo-500/10 dark:shadow-indigo-900/20 transition-transform duration-300 hover:shadow-indigo-500/15">
@@ -522,9 +636,9 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
              </div>
           </div>
 
-          {/* Prompt Input Area */}
-          <div className="flex gap-3 items-start">
-             <div className="flex-grow relative group">
+          {/* Prompt Input Area - Refactored Layout */}
+          <div className="flex flex-col gap-3">
+             <div className="relative group">
                 <input
                   type="text"
                   ref={promptInputRef}
@@ -532,39 +646,58 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError }) => {
                   onChange={(e) => setPrompt(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleExecute()}
                   placeholder={inputTexts.length > 1 ? "✨ 描述如何比較或融合這些文字... (例如：比較兩者的差異)" : "✨ 希望 AI 如何修改文字？"}
-                  className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl pl-5 pr-20 py-3.5 shadow-inner focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400"
+                  className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl px-5 py-4 shadow-inner focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-400"
                 />
-                
-                {/* Voice Input & Dice Buttons */}
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+             </div>
+             
+             {/* New Toolbar */}
+             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                   <button 
+                      onClick={handleMagicOptimize}
+                      disabled={isOptimizing}
+                      className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${isOptimizing ? 'text-indigo-600 bg-indigo-100 border-indigo-200 animate-pulse' : 'text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm'}`}
+                      title="魔術棒：優化提示詞"
+                   >
+                       <Wand2 size={14} /> 魔法優化
+                   </button>
+                   <button 
+                      onClick={handleAnalyzeSuggestions}
+                      disabled={isAnalyzing}
+                      className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${isAnalyzing ? 'text-indigo-600 bg-indigo-100 border-indigo-200 animate-pulse' : 'text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-700 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm'}`}
+                      title="AI 深度分析顧問"
+                   >
+                       <Lightbulb size={14} className="text-yellow-500" /> 深度分析
+                   </button>
                    <button 
                       onClick={handleRandomPrompt}
-                      className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                      className="p-2 text-slate-500 hover:text-indigo-600 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-700 rounded-lg transition-all shadow-sm"
                       title="隨機靈感"
                    >
                        <Dices size={16} />
                    </button>
                    <button 
                       onClick={startListening}
-                      className={`p-2 rounded-lg transition-all ${isListening ? 'text-red-500 bg-red-50 animate-pulse' : 'text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}
+                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-indigo-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-700'}`}
                       title={isListening ? "停止錄音" : "語音輸入"}
                    >
                        {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                    </button>
                 </div>
+
+                <Button 
+                    onClick={handleExecute} 
+                    isLoading={isProcessing} 
+                    accentColor="indigo"
+                    disabled={inputTexts.every(t => !t.trim()) || !prompt}
+                    className="w-full sm:w-auto px-8 py-2.5 shadow-lg shadow-indigo-500/20"
+                >
+                    執行 <ArrowRight size={16} className="ml-2" />
+                </Button>
              </div>
-             <Button 
-                onClick={handleExecute} 
-                isLoading={isProcessing} 
-                accentColor="indigo"
-                disabled={inputTexts.every(t => !t.trim()) || !prompt}
-                className="h-[52px] px-8 shadow-lg shadow-indigo-500/20"
-             >
-                執行 <ArrowRight size={16} className="ml-2" />
-             </Button>
           </div>
         </div>
       </div>
     </div>
   );
-};
+}

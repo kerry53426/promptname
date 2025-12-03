@@ -1,25 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
-import { generateImageFromText, suggestImageKeywords, IWindow } from '../services/geminiService';
+import { generateImageFromText, suggestImageKeywords, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { TXT2IMG_PROMPTS, IMAGE_MODELS, ASPECT_RATIOS, TXT2IMG_CATEGORIES } from '../constants';
 import { PromptTemplate } from '../types';
-import { ArrowRight, Download, Wand2, Settings2, Crop, Clock, Trash2, Sparkles, Filter, ChevronDown, ChevronUp, Plus, BarChart3, Zap, Ban, Search, Mic, MicOff, Dices, X } from 'lucide-react';
+import { ArrowRight, Download, Wand2, Settings2, Crop, Clock, Trash2, Sparkles, Filter, ChevronDown, ChevronUp, Plus, BarChart3, Zap, Ban, Search, Mic, MicOff, Dices, X, Lightbulb, Image as ImageIcon } from 'lucide-react';
 
 interface TextToImagePlaygroundProps {
   onError: (msg: string) => void;
+  incomingPrompt?: string;
 }
 
-export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ onError }) => {
+export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ onError, incomingPrompt }) => {
   const [prompt, setPrompt] = useState('');
   const [outputImage, setOutputImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false); // Magic wand state
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [openSubcategories, setOpenSubcategories] = useState<{[key: string]: boolean}>({});
+  const [sessionHistory, setSessionHistory] = useState<string[]>([]); // New session gallery state
   
   // New features
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+
+  // AI Suggestions
+  const [suggestionCategories, setSuggestionCategories] = useState<SuggestionCategory[]>([]);
+  const [activeSuggestionCategory, setActiveSuggestionCategory] = useState(0);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Advanced Settings
   const [temperature, setTemperature] = useState(1);
@@ -35,6 +44,12 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
 
   useEffect(() => { localStorage.setItem('promptcraft_txt2img_model', selectedModel); }, [selectedModel]);
   useEffect(() => { localStorage.setItem('promptcraft_txt2img_ratio', selectedRatio); }, [selectedRatio]);
+
+  useEffect(() => {
+    if (incomingPrompt) {
+        applyTemplate(incomingPrompt);
+    }
+  }, [incomingPrompt]);
 
   const [history, setHistory] = useState<string[]>(() => {
     try {
@@ -62,8 +77,10 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
     if (!prompt.trim()) return;
 
     setIsProcessing(true);
-    setOutputImage(null);
+    // Do NOT clear outputImage immediately to avoid flicker, let loading spinner overlay it
+    // setOutputImage(null); 
     addToHistory(prompt);
+    setShowSuggestions(false); // Hide suggestions
 
     // Merge style into prompt if selected
     let finalPrompt = prompt;
@@ -87,7 +104,10 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
       
       if (result.imageBase64) {
         const mimeType = result.mediaMimeType || 'image/png';
-        setOutputImage(`data:${mimeType};base64,${result.imageBase64}`);
+        const newImage = `data:${mimeType};base64,${result.imageBase64}`;
+        setOutputImage(newImage);
+        // Add to session gallery (newest first)
+        setSessionHistory(prev => [newImage, ...prev]);
       } else {
         onError("未生成圖片，可能因為安全過濾或模型限制。請嘗試不同的提示詞。");
       }
@@ -109,6 +129,20 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
     } finally {
         setIsSuggesting(false);
     }
+  };
+
+  const handleMagicOptimize = async () => {
+      if (!prompt.trim()) return;
+      setIsOptimizing(true);
+      try {
+          // Pass 'txt2img' as mode
+          const optimized = await optimizeUserPrompt(prompt, 'txt2img');
+          setPrompt(optimized);
+      } catch (e) {
+          onError("提示詞優化失敗");
+      } finally {
+          setIsOptimizing(false);
+      }
   };
 
   const addKeyword = (keyword: string) => {
@@ -139,6 +173,24 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
       setSelectedCategory(random.category);
       if (random.subcategory) setOpenSubcategories({[random.subcategory]: true});
       applyTemplate(random.prompt);
+  };
+
+  const handleAnalyzeSuggestions = async () => {
+      // For Text-to-Image, we can analyze the user's current (partial) prompt
+      // If empty, the analysis service handles it by suggesting random ideas
+      setIsAnalyzing(true);
+      setShowSuggestions(true);
+      setSuggestionCategories([]);
+      setActiveSuggestionCategory(0);
+      try {
+          const results = await analyzeContentForSuggestions('txt2img', prompt || "Please suggest creative image ideas");
+          setSuggestionCategories(results);
+      } catch(e) {
+          onError("分析失敗，請稍後再試。");
+          setShowSuggestions(false);
+      } finally {
+          setIsAnalyzing(false);
+      }
   };
 
   const startListening = () => {
@@ -277,6 +329,34 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
               </div>
             )}
           </div>
+
+          {/* Session Gallery */}
+          {sessionHistory.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 animate-in slide-in-from-bottom-2">
+                  <div className="flex items-center justify-between mb-2 px-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                          <ImageIcon size={10} /> 創作歷程膠卷 ({sessionHistory.length})
+                      </span>
+                      <button 
+                        onClick={() => setSessionHistory([])} 
+                        className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                      >
+                          <Trash2 size={10} /> 清除
+                      </button>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                      {sessionHistory.map((img, index) => (
+                          <button
+                              key={index}
+                              onClick={() => setOutputImage(img)}
+                              className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${outputImage === img ? 'border-emerald-500 shadow-md ring-1 ring-emerald-500/30' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600 opacity-70 hover:opacity-100'}`}
+                          >
+                              <img src={img} alt={`History ${index}`} className="w-full h-full object-cover" />
+                          </button>
+                      ))}
+                  </div>
+              </div>
+          )}
         </div>
 
         {/* Input & Controls */}
@@ -376,7 +456,7 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
            </div>
 
            {/* Input Box */}
-           <div className="mb-6">
+           <div className="flex flex-col gap-3 mb-6">
              <div className="flex justify-between items-center text-emerald-900/60 dark:text-emerald-300/60 text-xs font-bold uppercase tracking-wider mb-2 px-1">
                <span>圖片描述</span>
                <div className="flex items-center gap-2">
@@ -408,25 +488,8 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
                   onChange={(e) => setPrompt(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleExecute(); } }}
                   placeholder="✨ 描述您想看到的畫面... 例如：「一隻穿著太空裝的貓，在月球上喝咖啡，賽博龐克風格」"
-                  className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl pl-5 pr-20 py-3.5 shadow-inner focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none resize-none min-h-[100px] leading-relaxed transition-all placeholder:text-slate-400"
+                  className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl px-5 py-4 shadow-inner focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none resize-none min-h-[120px] leading-relaxed transition-all placeholder:text-slate-400"
                 />
-                 {/* Voice Input & Dice Buttons */}
-                <div className="absolute right-2 top-4 flex gap-1">
-                   <button 
-                      onClick={handleRandomPrompt}
-                      className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"
-                      title="隨機靈感"
-                   >
-                       <Dices size={16} />
-                   </button>
-                   <button 
-                      onClick={startListening}
-                      className={`p-2 rounded-lg transition-all ${isListening ? 'text-red-500 bg-red-50 animate-pulse' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'}`}
-                      title={isListening ? "停止錄音" : "語音輸入"}
-                   >
-                       {isListening ? <MicOff size={16} /> : <Mic size={16} />}
-                   </button>
-                </div>
              </div>
 
              {/* Suggested Keywords Area */}
@@ -445,119 +508,216 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
                  </div>
              )}
 
-             <Button 
-                onClick={handleExecute} 
-                isLoading={isProcessing} 
-                disabled={!prompt}
-                accentColor="emerald"
-                className="w-full mt-4 h-[56px] rounded-xl shadow-lg shadow-emerald-500/20"
-             >
-                開始繪圖 <ArrowRight size={16} className="ml-2" />
-             </Button>
-           </div>
-
-           {/* Prompts Section */}
-           <div className="flex-grow flex flex-col border-t border-emerald-50 dark:border-slate-700/50 pt-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
-                  <Sparkles size={12} className="text-emerald-400" /> 靈感畫廊 ({filteredPrompts.length})
-                </span>
-                
-                 <div className="flex items-center gap-2">
-                        {/* Search Bar */}
-                        <div className="relative group/search">
-                            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/search:text-emerald-500 transition-colors" />
-                            <input 
-                                type="text" 
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="搜尋..."
-                                className="pl-6 pr-2 py-1 text-[10px] w-24 focus:w-40 bg-white/50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg outline-none focus:border-emerald-400 transition-all"
-                            />
-                            {searchQuery && (
-                                <button onClick={() => setSearchQuery('')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={10}/></button>
-                            )}
-                        </div>
-
-                        {/* Category Filter (Hide on Search) */}
-                        {searchQuery === '' && (
-                            <div className="flex gap-1 bg-white/50 dark:bg-slate-700/50 p-1 rounded-lg border border-white/50 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm transition-all">
-                            <Filter size={10} className="text-emerald-400 ml-1 my-auto"/>
-                            <select 
-                                value={selectedCategory} 
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="bg-transparent text-[10px] text-slate-600 dark:text-slate-300 font-medium focus:outline-none cursor-pointer py-0.5 pr-1"
-                            >
-                                {TXT2IMG_CATEGORIES.map(c => (
-                                <option key={c.id} value={c.id} className="dark:bg-slate-800">{c.label}</option>
-                                ))}
-                            </select>
-                            </div>
-                        )}
+             {/* New Toolbar */}
+             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                   <button 
+                      onClick={handleMagicOptimize}
+                      disabled={isOptimizing}
+                      className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${isOptimizing ? 'text-purple-600 bg-purple-100 border-purple-200 animate-pulse' : 'text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-700 shadow-sm'}`}
+                      title="魔術棒：優化提示詞"
+                   >
+                       <Wand2 size={14} /> 魔法優化
+                   </button>
+                   <button 
+                      onClick={handleAnalyzeSuggestions}
+                      disabled={isAnalyzing}
+                      className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold border ${isAnalyzing ? 'text-emerald-600 bg-emerald-100 border-emerald-200 animate-pulse' : 'text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-600 dark:hover:text-emerald-400 shadow-sm'}`}
+                      title="AI 深度分析顧問"
+                   >
+                       <Lightbulb size={14} className="text-yellow-500" /> 深度分析
+                   </button>
+                   <button 
+                      onClick={handleRandomPrompt}
+                      className="p-2 text-slate-500 hover:text-emerald-600 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-lg transition-all shadow-sm"
+                      title="隨機靈感"
+                   >
+                       <Dices size={16} />
+                   </button>
+                   <button 
+                      onClick={startListening}
+                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-emerald-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-700'}`}
+                      title={isListening ? "停止錄音" : "語音輸入"}
+                   >
+                       {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                   </button>
                 </div>
-              </div>
-              
-              <div className="flex-grow overflow-y-auto max-h-[250px] pr-1 scrollbar-thin">
-                {/* Accordion Layout */}
-                <div className="flex flex-col gap-2 mb-4">
-                  {Object.entries(groupedPrompts).map(([subcategory, prompts]) => (
-                     <div key={subcategory} className="border border-slate-100 dark:border-slate-700/60 rounded-xl overflow-hidden bg-white/50 dark:bg-slate-800/30">
-                        <button 
-                            onClick={() => toggleSubcategory(subcategory)}
-                            className="w-full flex items-center justify-between p-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors"
-                        >
-                            <span>{subcategory} ({prompts.length})</span>
-                            {openSubcategories[subcategory] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        </button>
-                        
-                        {openSubcategories[subcategory] && (
-                            <div className="p-2 grid grid-cols-2 gap-2 bg-slate-50/50 dark:bg-slate-900/20 border-t border-slate-100 dark:border-slate-700/50 animate-in slide-in-from-top-1">
-                                {prompts.map((t) => (
-                                    <button
-                                    key={t.id}
-                                    onClick={() => applyTemplate(t.prompt)}
-                                    className="group relative text-[11px] px-3 py-2 rounded-lg bg-white dark:bg-slate-700 hover:bg-emerald-600 hover:text-white text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600 hover:border-emerald-600 transition-all duration-200 font-medium text-left truncate shadow-sm hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:scale-95"
-                                    title={t.description}
-                                    >
-                                    {t.label.split('|')[1]?.trim() || t.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                     </div>
-                  ))}
-                  {filteredPrompts.length === 0 && (
-                      <div className="w-full text-center py-4 text-slate-400 text-xs italic">
-                          沒有找到符合「{searchQuery}」的提示詞
-                      </div>
-                  )}
-                </div>
-              </div>
 
-              {/* History Section */}
-              {history.length > 0 && (
-                <div className="mt-2 pt-3 border-t border-slate-100 dark:border-slate-700/50 animate-fade-in">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock size={12} className="text-slate-400"/>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">最近使用</span>
-                    <button onClick={clearHistory} className="ml-auto text-[10px] text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-0.5 rounded-full transition-colors"><Trash2 size={10}/></button>
-                  </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {history.map((h, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setPrompt(h)}
-                        className="text-[10px] px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600/50 text-slate-500 dark:text-slate-300 whitespace-nowrap max-w-[100px] truncate hover:bg-slate-100 dark:hover:bg-slate-600 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                      >
-                        {h}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                <Button 
+                    onClick={handleExecute} 
+                    isLoading={isProcessing} 
+                    disabled={!prompt}
+                    accentColor="emerald"
+                    className="w-full sm:w-auto px-8 py-2.5 shadow-lg shadow-emerald-500/20"
+                >
+                    開始繪圖 <ArrowRight size={16} className="ml-2" />
+                </Button>
+             </div>
            </div>
         </div>
       </div>
+
+      {/* Suggestion Panel Overlay */}
+      {showSuggestions && (
+          <div className="relative w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 animate-in slide-in-from-top-4 mb-4 shadow-xl">
+              <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                      <Lightbulb size={16} className="text-yellow-500" /> AI 深度分析顧問：50 種創作策略
+                  </h3>
+                  <button onClick={() => setShowSuggestions(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
+                      <X size={14} />
+                  </button>
+              </div>
+              
+              {isAnalyzing ? (
+                  <div className="flex justify-center items-center py-8 gap-2 text-emerald-600 dark:text-emerald-400 font-medium text-xs">
+                      <span className="animate-spin">⌛</span> 正在分析輸入內容並構思 50 種畫面，請稍候...
+                  </div>
+              ) : (
+                  <div className="flex flex-col gap-4">
+                      {/* Category Tabs */}
+                      <div className="flex flex-wrap gap-2">
+                          {suggestionCategories.map((cat, index) => (
+                              <button
+                                  key={index}
+                                  onClick={() => setActiveSuggestionCategory(index)}
+                                  className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${
+                                      activeSuggestionCategory === index
+                                      ? 'bg-emerald-500 text-white shadow-md'
+                                      : 'bg-white/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'
+                                  }`}
+                              >
+                                  {cat.categoryName}
+                              </button>
+                          ))}
+                      </div>
+
+                      {/* Suggestions Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                          {suggestionCategories[activeSuggestionCategory]?.items.map((s, i) => (
+                              <button
+                                  key={i}
+                                  onClick={() => {
+                                      applyTemplate(s.prompt);
+                                      setShowSuggestions(false);
+                                  }}
+                                  className="flex flex-col items-start p-3 bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 rounded-xl transition-all hover:shadow-md hover:-translate-y-1 text-left h-full group"
+                              >
+                                  <span className="text-xl mb-1 group-hover:scale-110 transition-transform duration-300">{s.emoji}</span>
+                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight mb-1">{s.title}</span>
+                                  <span className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-2">{s.description}</span>
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+              )}
+          </div>
+      )}
+      
+      {/* Bottom Section: Accordion Categories */}
+      <div className="bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl rounded-[2rem] p-6 border border-white/50 dark:border-slate-700/50 shadow-2xl shadow-emerald-500/10 dark:shadow-emerald-900/20 transition-transform duration-300 hover:shadow-emerald-500/15">
+         
+         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-emerald-50 dark:border-slate-700/50 pb-4 mb-4">
+            <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
+                    <Sparkles size={12} className="text-emerald-400" /> 靈感畫廊 ({filteredPrompts.length})
+                </span>
+                
+                {/* Search Bar */}
+                <div className="relative group/search">
+                    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/search:text-emerald-500 transition-colors" />
+                    <input 
+                        type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="搜尋風格..."
+                        className="pl-6 pr-2 py-1 text-[10px] w-24 focus:w-40 bg-white/50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg outline-none focus:border-emerald-400 transition-all"
+                    />
+                     {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={10}/></button>
+                    )}
+                </div>
+            </div>
+
+            {/* Category Filter */}
+            {searchQuery === '' && (
+                <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+                    {TXT2IMG_CATEGORIES.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setSelectedCategory(cat.id)}
+                            className={`text-[10px] px-3 py-1 rounded-full whitespace-nowrap transition-all duration-300 ${
+                                selectedCategory === cat.id 
+                                ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm scale-105' 
+                                : 'bg-transparent text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 hover:shadow-sm'
+                            }`}
+                        >
+                            {cat.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+         </div>
+
+         {/* Accordion Grid */}
+         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Object.entries(groupedPrompts).map(([subcategory, prompts]) => (
+                <div key={subcategory} className="bg-white/40 dark:bg-slate-700/30 rounded-xl border border-white/60 dark:border-slate-600/50 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-emerald-200 dark:hover:border-emerald-800">
+                    <button 
+                        onClick={() => toggleSubcategory(subcategory)}
+                        className="w-full flex items-center justify-between p-3 bg-white/60 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                    >
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{subcategory}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-md">{prompts.length}</span>
+                            {openSubcategories[subcategory] ? <ChevronUp size={14} className="text-emerald-500"/> : <ChevronDown size={14} className="text-slate-400"/>}
+                        </div>
+                    </button>
+                    
+                    {openSubcategories[subcategory] && (
+                        <div className="p-3 grid gap-2 animate-in slide-in-from-top-2 duration-200">
+                            {prompts.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => applyTemplate(t.prompt)}
+                                    className="text-left group flex flex-col gap-1 p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-transparent hover:border-emerald-100 dark:hover:border-emerald-800/50 transition-all active:scale-[0.98]"
+                                >
+                                    <div className="flex justify-between items-start w-full">
+                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">{t.label.split('|')[1]?.trim() || t.label}</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{t.description}</p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
+             {Object.keys(groupedPrompts).length === 0 && (
+                <div className="col-span-full text-center py-8 text-slate-400 italic text-xs">
+                    沒有找到符合的風格類別
+                </div>
+            )}
+         </div>
+
+         {history.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700/50 animate-fade-in">
+            <div className="flex items-center gap-2 mb-2">
+                <Clock size={12} className="text-slate-400"/>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">歷史紀錄</span>
+                <button onClick={clearHistory} className="ml-auto text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20">
+                <Trash2 size={10}/> 清除
+                </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+                {history.map((h, i) => (
+                <button key={i} onClick={() => setPrompt(h)} className="text-[10px] px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-100 dark:border-slate-600 transition-all hover:scale-105 active:scale-95 max-w-[200px] truncate">
+                    {h}
+                </button>
+                ))}
+            </div>
+            </div>
+        )}
+      </div>
     </div>
   );
-};
+}

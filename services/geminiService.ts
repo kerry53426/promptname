@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 // --- Type Definitions for Web Speech API ---
@@ -9,9 +8,6 @@ export interface IWindow extends Window {
 
 // Helper to safely get the API key
 const getApiKey = () => {
-  // Per guidelines, strictly use process.env.API_KEY.
-  // We check for process existence to be safe in environments where it might not be shimmed yet,
-  // although guidelines say assume it's accessible and valid.
   if (typeof process !== 'undefined' && process.env?.API_KEY) {
     return process.env.API_KEY;
   }
@@ -23,7 +19,6 @@ const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 /**
  * Modifies or generates text based on input text and a prompt.
- * Supports string or string[] as input.
  */
 export const modifyTextWithGemini = async (
   inputText: string | string[], 
@@ -62,7 +57,6 @@ export const fileToGenerativePart = (file: File): Promise<string> => {
     const reader = new FileReader();
     reader.onloadend = () => {
       if (typeof reader.result === 'string') {
-        // Remove the Data URL prefix (e.g., "data:image/png;base64,") to get just the base64 string
         const base64String = reader.result.split(',')[1];
         resolve(base64String);
       } else {
@@ -121,8 +115,7 @@ export const modifyImageWithGemini = async (
 };
 
 /**
- * Generates an image from text from scratch (Text-to-Image).
- * Updated to support negative prompts and Imagen models.
+ * Generates an image from text.
  */
 export const generateImageFromText = async (
   userPrompt: string,
@@ -131,7 +124,6 @@ export const generateImageFromText = async (
   options?: { temperature?: number; seed?: number; negativePrompt?: string }
 ): Promise<{ text?: string; imageBase64?: string; mediaMimeType?: string }> => {
   try {
-    // Handle Imagen Models
     if (modelName.toLowerCase().includes('imagen')) {
         const response = await ai.models.generateImages({
             model: modelName,
@@ -150,7 +142,6 @@ export const generateImageFromText = async (
         return {};
     }
 
-    // Handle Gemini Models (Nano Banana)
     const config: any = {
       imageConfig: {
         aspectRatio: aspectRatio
@@ -160,7 +151,6 @@ export const generateImageFromText = async (
     if (options?.temperature !== undefined) config.temperature = options.temperature;
     if (options?.seed !== undefined) config.seed = options.seed;
 
-    // Append negative prompt to the main prompt as an instruction for models that don't support it in config
     let finalPrompt = userPrompt;
     if (options?.negativePrompt && options.negativePrompt.trim()) {
         finalPrompt += `\n\n(Negative prompt / Exclude elements: ${options.negativePrompt})`;
@@ -182,8 +172,7 @@ export const generateImageFromText = async (
 };
 
 /**
- * Analyzes an image and returns text (Image-to-Text).
- * Now supports JSON mode.
+ * Analyzes an image (Image-to-Text).
  */
 export const analyzeImageWithGemini = async (
   images: ImageInput[],
@@ -223,9 +212,7 @@ export const analyzeImageWithGemini = async (
 };
 
 /**
- * Generates a video from an image using Veo models (Image-to-Video).
- * This is a long-running operation that requires polling.
- * Now supports progress callback and AbortSignal for cancellation.
+ * Generates video from image (Veo).
  */
 export const generateVideoFromImage = async (
   image: ImageInput,
@@ -235,7 +222,6 @@ export const generateVideoFromImage = async (
   signal?: AbortSignal
 ): Promise<string> => {
   try {
-    // 1. Check for API Key selection (Required for Veo)
     if (typeof window !== 'undefined' && (window as any).aistudio) {
         const aistudio = (window as any).aistudio;
         const hasKey = await aistudio.hasSelectedApiKey();
@@ -246,10 +232,8 @@ export const generateVideoFromImage = async (
     
     if (signal?.aborted) throw new Error("使用者取消了影片生成。");
 
-    // Create a NEW instance to ensure the latest key from aistudio is used (Fix race condition)
     const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
 
-    // 2. Start the operation
     if (onProgress) onProgress('正在初始化 Veo 模型...');
     
     let operation = await freshAi.models.generateVideos({
@@ -261,41 +245,27 @@ export const generateVideoFromImage = async (
       },
       config: {
         numberOfVideos: 1,
-        // Veo supports 720p or 1080p, we default to 720p for speed in demo
         resolution: '720p', 
       }
     });
 
-    // 3. Poll for completion
     while (!operation.done) {
       if (signal?.aborted) {
           throw new Error("使用者取消了影片生成。");
       }
-
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds
+      await new Promise(resolve => setTimeout(resolve, 5000));
       operation = await freshAi.operations.getVideosOperation({ operation: operation });
       
-      // Update progress
       const metadata = operation.metadata as any;
       if (metadata && onProgress) {
-          // Typically metadata contains createTime, state, etc.
-          // We can show a generic processing message or detailed state if available
           onProgress(`模型運算中... (狀態: ${metadata.state || 'Processing'})`);
       }
     }
 
-    // 4. Extract video URI
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
+    if (!videoUri) throw new Error("Video generation completed but no URI returned.");
     
-    if (!videoUri) {
-        throw new Error("Video generation completed but no URI returned.");
-    }
-    
-    // 5. Fetch the video blob
-    // Guidelines require appending API Key from process.env explicitly
     const downloadUrl = `${videoUri}&key=${getApiKey()}`;
-    
-    // Return the URL directly. The <video> tag can usually handle it if valid.
     return downloadUrl;
 
   } catch (error) {
@@ -305,7 +275,7 @@ export const generateVideoFromImage = async (
 };
 
 /**
- * Suggests keywords to enhance an image prompt.
+ * Suggests keywords.
  */
 export const suggestImageKeywords = async (currentPrompt: string): Promise<string[]> => {
   try {
@@ -314,66 +284,210 @@ export const suggestImageKeywords = async (currentPrompt: string): Promise<strin
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `
-        Analyze this image generation prompt: "${currentPrompt}".
-        Suggest 5 specific, high-quality, comma-separated keywords or short phrases to improve the visual style, lighting, or detail (e.g., 'Volumetric lighting', 'Cyberpunk', '85mm lens', 'Octane render').
-        Return ONLY the comma-separated keywords.
+        Analyze this prompt: "${currentPrompt}".
+        Suggest 5 keywords. Return ONLY comma-separated keywords.
       `,
     });
 
     const text = response.text || "";
     return text.split(',').map(s => s.trim()).filter(s => s.length > 0).slice(0, 5);
   } catch (error) {
-    console.error("Keyword suggestion failed:", error);
     return [];
   }
 };
 
 /**
- * Helper function to suggest relevant prompts based on content analysis
+ * Optimizes a user's prompt (Omni-Magic Enhancer).
+ * Adapts optimization logic based on the active mode.
  */
-export const suggestRelevantPrompts = async (
-    content: string | ImageInput,
-    type: 'text' | 'image',
-    promptList: {id: string, label: string, prompt: string}[]
-): Promise<string[]> => {
+export const optimizeUserPrompt = async (
+    currentPrompt: string, 
+    mode: 'text' | 'image' | 'txt2img' | 'img2txt' | 'img2vid' = 'txt2img'
+): Promise<string> => {
     try {
-        let contentPart;
-        if (type === 'image') {
-            const img = content as ImageInput;
-            contentPart = { inlineData: { mimeType: img.mimeType, data: img.base64 } };
-        } else {
-            contentPart = { text: content as string };
-        }
+        if (!currentPrompt.trim()) return "";
 
-        const systemPrompt = `
-        You are a helpful assistant for a Prompt Engineering Playground.
-        Analyze the provided content (text or image) and select the 3 most relevant prompt templates from the following list.
-        Return ONLY a JSON array of string IDs (e.g., ["id1", "id2", "id3"]). Do not output markdown or explanations.
-        
-        Available Prompts:
-        ${JSON.stringify(promptList.map(p => ({id: p.id, label: p.label, prompt: p.prompt})))}
-        `;
+        let systemInstruction = "";
+
+        switch (mode) {
+            case 'text':
+                systemInstruction = `
+                Act as an expert editor and prompt engineer.
+                Your task is to refine the user's instruction for modifying/generating text.
+                User Input: "${currentPrompt}"
+                Instructions:
+                1. Make the instruction clear, specific, and professional.
+                2. If the input is vague (e.g., "make it shorter"), expand it with specific constraints (e.g., "Summarize the text concisely, retaining key data points, bullet points").
+                3. Maintain the user's original intent but elevate the quality of the request.
+                4. Output ONLY the optimized instruction string in Traditional Chinese.
+                `;
+                break;
+            case 'image': // Image Editing
+                systemInstruction = `
+                Act as a professional photo editor.
+                Your task is to refine the user's instruction for editing an image using AI.
+                User Input: "${currentPrompt}"
+                Instructions:
+                1. Use precise terminology (e.g., "remove background", "color grading", "exposure", "texture").
+                2. Add details about how the edit should look (natural, seamless blending, high contrast).
+                3. If adding objects, specify lighting and perspective matching.
+                4. Output ONLY the optimized instruction string in Traditional Chinese.
+                `;
+                break;
+            case 'img2vid':
+                systemInstruction = `
+                Act as a cinematogropher and AI video generation expert (Veo/Sora).
+                Your task is to refine the user's instruction for animating an image.
+                User Input: "${currentPrompt}"
+                Instructions:
+                1. Focus on camera movement (pan, dolly, zoom, truck) and physical motion (flow, wind, gravity).
+                2. Describe the motion vividly (slow-motion, cinematic, smooth transition).
+                3. Keep it under 200 words but highly descriptive.
+                4. Output ONLY the optimized instruction string in Traditional Chinese.
+                `;
+                break;
+            case 'img2txt':
+                systemInstruction = `
+                Act as an analytical expert.
+                Your task is to refine the user's question or instruction for analyzing an image.
+                User Input: "${currentPrompt}"
+                Instructions:
+                1. Make the question more specific and deep.
+                2. If asking for description, ask for specific details (lighting, mood, objects).
+                3. If OCR, specify format (JSON, markdown).
+                4. Output ONLY the optimized instruction string in Traditional Chinese.
+                `;
+                break;
+            case 'txt2img':
+            default:
+                systemInstruction = `
+                Act as a professional prompt engineer for AI image generation (Midjourney/Stable Diffusion style).
+                Your task is to rewrite and enhance the following user input into a high-quality, detailed prompt.
+                User Input: "${currentPrompt}"
+                Instructions:
+                1. Keep the original intent and subject.
+                2. Add details about lighting, style, composition, texture, and mood.
+                3. Use high-quality keywords (e.g., 8k, cinematic, photorealistic, octane render).
+                4. If the input is in Chinese, use Traditional Chinese for the description part, but include English technical terms if helpful.
+                5. Output ONLY the optimized prompt text.
+                `;
+                break;
+        }
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: {
-                parts: [contentPart, { text: systemPrompt }]
-            },
+            contents: systemInstruction,
             config: {
-                responseMimeType: "application/json"
+                temperature: 0.7,
+            }
+        });
+
+        return response.text?.trim() || currentPrompt;
+    } catch (error) {
+        console.error("Prompt optimization failed:", error);
+        return currentPrompt;
+    }
+};
+
+export interface PromptSuggestion {
+    emoji: string;
+    title: string;
+    description: string;
+    prompt: string;
+}
+
+export interface SuggestionCategory {
+    categoryName: string;
+    items: PromptSuggestion[];
+}
+
+/**
+ * Analyzes content and suggests 30 diverse directions (5 categories * 6 suggestions).
+ * Reduced count to prevent JSON truncation.
+ */
+export const analyzeContentForSuggestions = async (
+    mode: 'text' | 'image' | 'txt2img' | 'img2txt' | 'img2vid',
+    context: string | string[] | ImageInput[]
+): Promise<SuggestionCategory[]> => {
+    try {
+        let contents: any[] = [];
+        
+        // Build context
+        if (Array.isArray(context) && context.length > 0 && typeof context[0] !== 'string') {
+            const images = context as ImageInput[];
+            contents = images.map(img => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } }));
+        } else if (Array.isArray(context) && typeof context[0] === 'string') {
+            contents = [{ text: (context as string[]).join('\n') }];
+        } else if (typeof context === 'string') {
+            contents = [{ text: context }];
+        }
+
+        let taskDescription = "";
+        switch (mode) {
+            case 'text':
+                taskDescription = "Analyze this text. Provide 5 distinct categories of analysis/rewriting directions (e.g., Creative, Professional, Critical, Fun, Academic). Under EACH category, provide 6 specific suggestions.";
+                break;
+            case 'image':
+                taskDescription = "Analyze this image. Provide 5 distinct categories of editing/modification ideas (e.g., Filters, Object Changes, Art Styles, Lighting, Background). Under EACH category, provide 6 specific suggestions.";
+                break;
+            case 'txt2img':
+                taskDescription = "Based on this text input (or idea), provide 5 distinct artistic categories (e.g., Photorealism, 3D, Illustration, Anime, Abstract). Under EACH category, provide 6 specific image generation prompts.";
+                break;
+            case 'img2txt':
+                taskDescription = "Analyze this image. Provide 5 distinct categories of analysis tasks (e.g., Detailed Description, OCR/Data, Storytelling, Marketing, Technical Analysis). Under EACH category, provide 6 specific prompts.";
+                break;
+            case 'img2vid':
+                taskDescription = "Analyze this image. Provide 5 distinct categories of video motion ideas (e.g., Camera Movements, Physics/Elements, VFX, Atmosphere, Narrative). Under EACH category, provide 6 specific prompts.";
+                break;
+        }
+
+        const systemPrompt = `
+        You are a world-class AI Prompt Engineer.
+        Task: ${taskDescription}
+        Constraint: Return a JSON array of exactly 5 objects (Categories).
+        Each Category object must have a 'categoryName' and an 'items' array.
+        The 'items' array must contain exactly 6 Suggestion objects.
+        Schema: 
+        [
+          { 
+            "categoryName": "string", 
+            "items": [
+              { "emoji": "string", "title": "string", "description": "string (keep under 20 words)", "prompt": "string" },
+              ... (6 items)
+            ]
+          },
+          ... (5 categories)
+        ]
+        Language: Traditional Chinese (zh-TW).
+        The 'prompt' field should be the actual command the user sends to the AI.
+        Ensure diversity and high quality. Keep output concise to ensure valid JSON.
+        `;
+
+        contents.push({ text: systemPrompt });
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: contents },
+            config: { 
+                responseMimeType: "application/json",
+                temperature: 1.0, 
+                maxOutputTokens: 8192 
             }
         });
 
         const text = response.text;
         if (!text) return [];
-        return JSON.parse(text);
+        
+        // Clean up markdown code blocks if present
+        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        return JSON.parse(cleanText);
     } catch (e) {
-        console.error("Suggestion failed", e);
+        console.error("Analysis failed:", e);
         return [];
     }
-}
+};
 
-// Helper to extract text and image from response
 const parseResponse = (response: any) => {
   let resultText = '';
   let resultImage = '';
@@ -383,9 +497,7 @@ const parseResponse = (response: any) => {
     const parts = response.candidates[0].content?.parts;
     if (parts) {
       for (const part of parts) {
-        if (part.text) {
-          resultText += part.text;
-        }
+        if (part.text) resultText += part.text;
         if (part.inlineData && part.inlineData.data) {
           resultImage = part.inlineData.data;
           resultMimeType = part.inlineData.mimeType || 'image/png';
@@ -394,9 +506,5 @@ const parseResponse = (response: any) => {
     }
   }
 
-  return {
-    text: resultText,
-    imageBase64: resultImage,
-    mediaMimeType: resultMimeType
-  };
+  return { text: resultText, imageBase64: resultImage, mediaMimeType: resultMimeType };
 };
