@@ -1,0 +1,5 @@
+{
+  "name": "提示詞工坊",
+  "description": "一個互動式的遊樂場，使用 Google Gemini 學習和練習文字與圖片修改的提示工程。",
+  "requestFramePermissions": []
+}
