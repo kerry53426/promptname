@@ -123,7 +123,10 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
     setOutputImage(null);
     setOutputText(null);
     addToHistory(prompt);
-    setShowSuggestions(false); // Hide suggestions
+    
+    // User requested to keep suggestions open on selection, but maybe close on execute?
+    // Let's keep it open if they are experimenting. 
+    // setShowSuggestions(false); 
 
     try {
       const imagesPayload = await Promise.all(selectedFiles.map(async (file) => {

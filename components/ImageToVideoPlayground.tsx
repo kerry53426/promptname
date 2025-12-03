@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { fileToGenerativePart, generateVideoFromImage, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { IMG2VID_PROMPTS, VIDEO_MODELS, IMG2VID_CATEGORIES } from '../constants';
-import { ArrowRight, Download, Upload, Video, Settings2, Clock, Trash2, Sparkles, Filter, X, Lightbulb, Clapperboard, Loader2, Ban, Search, Mic, MicOff, Dices, Wand2 } from 'lucide-react';
+import { ArrowRight, Download, Upload, Video, Settings2, Clock, Trash2, Sparkles, Filter, X, Lightbulb, Clapperboard, Loader2, Ban, Search, Mic, MicOff, Dices, Wand2, Waves } from 'lucide-react';
 
 interface ImageToVideoPlaygroundProps {
   onError: (msg: string) => void;
@@ -22,6 +22,7 @@ export const ImageToVideoPlayground: React.FC<ImageToVideoPlaygroundProps> = ({ 
   // New features
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
 
   // AI Suggestions
@@ -33,6 +34,7 @@ export const ImageToVideoPlayground: React.FC<ImageToVideoPlaygroundProps> = ({ 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('promptcraft_img2vid_model') || VIDEO_MODELS[0].id);
 
@@ -52,11 +54,14 @@ export const ImageToVideoPlayground: React.FC<ImageToVideoPlaygroundProps> = ({ 
     }
   }, [selectedFile]);
 
-  // Cleanup abort controller on unmount
+  // Cleanup abort controller and speech recognition on unmount
   useEffect(() => {
       return () => {
           if (abortControllerRef.current) {
               abortControllerRef.current.abort();
+          }
+          if (recognitionRef.current) {
+              recognitionRef.current.stop();
           }
       };
   }, []);
@@ -104,6 +109,9 @@ export const ImageToVideoPlayground: React.FC<ImageToVideoPlaygroundProps> = ({ 
     setOutputVideoUrl(null);
     setProgressMessage('正在初始化 Veo 模型...');
     addToHistory(prompt);
+    // User requested to keep suggestions open on selection, but maybe close on execute?
+    // Let's keep it open if they are experimenting. 
+    // setShowSuggestions(false); 
 
     try {
       const base64 = await fileToGenerativePart(selectedFile);
@@ -197,7 +205,16 @@ export const ImageToVideoPlayground: React.FC<ImageToVideoPlaygroundProps> = ({ 
       }
   };
 
-  const startListening = () => {
+  const toggleListening = () => {
+      if (isListening) {
+          if (recognitionRef.current) {
+              recognitionRef.current.stop();
+          }
+          setIsListening(false);
+          setInterimTranscript('');
+          return;
+      }
+
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
           onError("您的瀏覽器不支援語音輸入功能。");
           return;
@@ -205,19 +222,43 @@ export const ImageToVideoPlayground: React.FC<ImageToVideoPlaygroundProps> = ({ 
 
       const SpeechRecognition = (window as unknown as IWindow).webkitSpeechRecognition || (window as unknown as IWindow).SpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'zh-TW';
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognitionRef.current = recognition;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
+      recognition.lang = 'zh-TW';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+          setIsListening(true);
+          setInterimTranscript('');
+      };
+
+      recognition.onend = () => {
+          setIsListening(false);
+          setInterimTranscript('');
+      };
+
       recognition.onerror = (event: any) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
       };
+
       recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setPrompt(prev => prev + (prev ? ' ' : '') + transcript);
+          let finalTranscript = '';
+          let interim = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                  finalTranscript += event.results[i][0].transcript;
+              } else {
+                  interim += event.results[i][0].transcript;
+              }
+          }
+
+          if (finalTranscript) {
+              setPrompt(prev => prev + (prev ? ' ' : '') + finalTranscript);
+          }
+          setInterimTranscript(interim);
       };
 
       recognition.start();
@@ -557,8 +598,8 @@ export const ImageToVideoPlayground: React.FC<ImageToVideoPlaygroundProps> = ({ 
                        <Dices size={16} />
                    </button>
                    <button 
-                      onClick={startListening}
-                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-violet-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-violet-300 dark:hover:border-violet-700'}`}
+                      onClick={toggleListening}
+                      className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-white bg-red-500 border-red-600 animate-pulse shadow-red-500/30' : 'text-slate-500 hover:text-violet-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-violet-300 dark:hover:border-violet-700'}`}
                       title={isListening ? "停止錄音" : "語音輸入"}
                    >
                        {isListening ? <MicOff size={16} /> : <Mic size={16} />}

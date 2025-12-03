@@ -1,11 +1,13 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { fileToGenerativePart, analyzeImageWithGemini, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { IMG2TXT_PROMPTS, TEXT_MODELS, IMG2TXT_CATEGORIES } from '../constants';
-import { ArrowRight, Upload, ScanSearch, Settings2, Clock, Trash2, Sparkles, Filter, Copy, Check, FileJson, FileText, Volume2, X, Lightbulb, Search, Mic, MicOff, Dices, Wand2 } from 'lucide-react';
+import { ArrowRight, Upload, ScanSearch, Settings2, Clock, Trash2, Sparkles, Filter, Copy, Check, FileJson, FileText, Volume2, X, Lightbulb, Search, Mic, MicOff, Dices, Wand2, Waves } from 'lucide-react';
 
 interface ImageToTextPlaygroundProps {
   onError: (msg: string) => void;
+  incomingPrompt?: string;
 }
 
 // Simple markdown renderer component
@@ -47,7 +49,7 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
-export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ onError }) => {
+export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ onError, incomingPrompt }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [prompt, setPrompt] = useState('');
@@ -62,6 +64,7 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
   // New features
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
 
   // AI Suggestions
@@ -72,10 +75,15 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('promptcraft_img2txt_model') || 'gemini-2.5-flash');
 
   useEffect(() => { localStorage.setItem('promptcraft_img2txt_model', selectedModel); }, [selectedModel]);
+
+  useEffect(() => {
+    if (incomingPrompt) applyTemplate(incomingPrompt);
+  }, [incomingPrompt]);
 
   useEffect(() => {
     const urls = selectedFiles.map(file => URL.createObjectURL(file));
@@ -87,6 +95,9 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
   useEffect(() => {
     return () => {
         window.speechSynthesis.cancel();
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
     };
   }, []);
 
@@ -134,7 +145,9 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
     setIsProcessing(true);
     setOutputText('');
     addToHistory(prompt);
-    setShowSuggestions(false); // Hide suggestions
+    // User requested to keep suggestions open on selection, but maybe close on execute?
+    // Let's keep it open if they are experimenting. 
+    // setShowSuggestions(false); 
 
     try {
       const imagesPayload = await Promise.all(selectedFiles.map(async (file) => {
@@ -233,7 +246,16 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
       }
   };
 
-  const startListening = () => {
+  const toggleListening = () => {
+      if (isListening) {
+          if (recognitionRef.current) {
+              recognitionRef.current.stop();
+          }
+          setIsListening(false);
+          setInterimTranscript('');
+          return;
+      }
+
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
           onError("您的瀏覽器不支援語音輸入功能。");
           return;
@@ -241,19 +263,43 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
 
       const SpeechRecognition = (window as unknown as IWindow).webkitSpeechRecognition || (window as unknown as IWindow).SpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'zh-TW';
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognitionRef.current = recognition;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
+      recognition.lang = 'zh-TW';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+          setIsListening(true);
+          setInterimTranscript('');
+      };
+
+      recognition.onend = () => {
+          setIsListening(false);
+          setInterimTranscript('');
+      };
+
       recognition.onerror = (event: any) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
       };
+
       recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setPrompt(prev => prev + (prev ? ' ' : '') + transcript);
+          let finalTranscript = '';
+          let interim = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                  finalTranscript += event.results[i][0].transcript;
+              } else {
+                  interim += event.results[i][0].transcript;
+              }
+          }
+
+          if (finalTranscript) {
+              setPrompt(prev => prev + (prev ? ' ' : '') + finalTranscript);
+          }
+          setInterimTranscript(interim);
       };
 
       recognition.start();
@@ -598,7 +644,7 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
                        <Dices size={16} />
                    </button>
                    <button 
-                      onClick={startListening}
+                      onClick={toggleListening}
                       className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-amber-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-amber-300 dark:hover:border-amber-700'}`}
                       title={isListening ? "停止錄音" : "語音輸入"}
                    >

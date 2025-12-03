@@ -3,7 +3,7 @@ import { Button } from './Button';
 import { generateImageFromText, suggestImageKeywords, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { TXT2IMG_PROMPTS, IMAGE_MODELS, ASPECT_RATIOS, TXT2IMG_CATEGORIES } from '../constants';
 import { PromptTemplate } from '../types';
-import { ArrowRight, Download, Wand2, Settings2, Crop, Clock, Trash2, Sparkles, Filter, ChevronDown, ChevronUp, Plus, BarChart3, Zap, Ban, Search, Mic, MicOff, Dices, X, Lightbulb, Image as ImageIcon } from 'lucide-react';
+import { ArrowRight, Download, Wand2, Settings2, Crop, Clock, Trash2, Sparkles, Filter, ChevronDown, ChevronUp, Plus, BarChart3, Zap, Ban, Search, Mic, MicOff, Dices, X, Lightbulb, Image as ImageIcon, Waves } from 'lucide-react';
 
 interface TextToImagePlaygroundProps {
   onError: (msg: string) => void;
@@ -23,6 +23,7 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
   // New features
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
 
   // AI Suggestions
   const [suggestionCategories, setSuggestionCategories] = useState<SuggestionCategory[]>([]);
@@ -38,6 +39,7 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
   const [suggestedKeywords, setSuggestedKeywords] = useState<string[]>([]);
   
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('promptcraft_txt2img_model') || IMAGE_MODELS[0].id);
   const [selectedRatio, setSelectedRatio] = useState(() => localStorage.getItem('promptcraft_txt2img_ratio') || ASPECT_RATIOS[0].id);
@@ -50,6 +52,15 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
         applyTemplate(incomingPrompt);
     }
   }, [incomingPrompt]);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const [history, setHistory] = useState<string[]>(() => {
     try {
@@ -80,7 +91,9 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
     // Do NOT clear outputImage immediately to avoid flicker, let loading spinner overlay it
     // setOutputImage(null); 
     addToHistory(prompt);
-    setShowSuggestions(false); // Hide suggestions
+    // User requested to keep suggestions open on selection, but maybe close on execute?
+    // Let's keep it open if they are experimenting. 
+    // setShowSuggestions(false); 
 
     // Merge style into prompt if selected
     let finalPrompt = prompt;
@@ -208,22 +221,58 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
 
       const SpeechRecognition = (window as unknown as IWindow).webkitSpeechRecognition || (window as unknown as IWindow).SpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'zh-TW';
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognitionRef.current = recognition;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
+      recognition.lang = 'zh-TW';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+          setIsListening(true);
+          setInterimTranscript('');
+      };
+
+      recognition.onend = () => {
+          setIsListening(false);
+          setInterimTranscript('');
+      };
+
       recognition.onerror = (event: any) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
       };
+
       recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setPrompt(prev => prev + (prev ? ' ' : '') + transcript);
+          let finalTranscript = '';
+          let interim = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                  finalTranscript += event.results[i][0].transcript;
+              } else {
+                  interim += event.results[i][0].transcript;
+              }
+          }
+
+          if (finalTranscript) {
+              setPrompt(prev => prev + (prev ? ' ' : '') + finalTranscript);
+          }
+          setInterimTranscript(interim);
       };
 
       recognition.start();
+  };
+
+  const toggleListening = () => {
+      if (isListening) {
+          if (recognitionRef.current) {
+              recognitionRef.current.stop();
+          }
+          setIsListening(false);
+          setInterimTranscript('');
+          return;
+      }
+      startListening();
   };
 
   // Calculate Prompt Complexity Score
@@ -497,6 +546,25 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
                   placeholder="✨ 描述您想看到的畫面... 例如：「一隻穿著太空裝的貓，在月球上喝咖啡，賽博龐克風格」"
                   className="w-full bg-white/50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-xl px-5 py-4 shadow-inner focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none resize-none min-h-[120px] leading-relaxed transition-all placeholder:text-slate-400"
                 />
+                
+                {/* Real-time Voice Transcription Overlay */}
+                {isListening && (
+                    <div className="absolute top-full left-0 right-0 mt-2 z-20 bg-white/90 dark:bg-slate-800/90 backdrop-blur-lg border border-red-200 dark:border-red-900 rounded-xl p-3 shadow-lg animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="relative flex items-center justify-center w-4 h-4">
+                                <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </div>
+                            <span className="text-xs font-bold text-red-500">正在聆聽...</span>
+                            <div className="ml-auto">
+                                <Waves size={16} className="text-red-400 animate-pulse" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 italic min-h-[1.5em]">
+                            {interimTranscript || "請說話..."}
+                        </p>
+                    </div>
+                )}
              </div>
 
              {/* Suggested Keywords Area */}
@@ -542,7 +610,7 @@ export const TextToImagePlayground: React.FC<TextToImagePlaygroundProps> = ({ on
                        <Dices size={16} />
                    </button>
                    <button 
-                      onClick={startListening}
+                      onClick={toggleListening}
                       className={`p-2 rounded-lg transition-all border shadow-sm ${isListening ? 'text-red-500 bg-red-50 border-red-200 animate-pulse' : 'text-slate-500 hover:text-emerald-600 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-700'}`}
                       title={isListening ? "停止錄音" : "語音輸入"}
                    >

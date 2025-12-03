@@ -6,9 +6,57 @@ export interface IWindow extends Window {
   SpeechRecognition: any;
 }
 
-// Initialize AI Client safely
-// Using process.env.API_KEY as per coding guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to safely get the API key in both Vite (Vercel) and AI Studio environments
+const getApiKey = () => {
+  // 1. Try Vite standard env var (for Vercel deployment)
+  try {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY;
+    }
+  } catch (e) {
+    // ignore
+  }
+  
+  // 2. Try Node.js process.env (safely accessed)
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+  } catch (e) {
+    // process might be undefined in some browsers, ignore error
+  }
+
+  return '';
+};
+
+// Initialize AI Client safely using the helper function
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
+
+/**
+ * Helper to parse the response from Gemini
+ */
+const parseResponse = (response: any) => {
+  let resultText = '';
+  let resultImage = '';
+  let resultMimeType = '';
+
+  if (response.candidates && response.candidates.length > 0) {
+    const parts = response.candidates[0].content?.parts;
+    if (parts) {
+      for (const part of parts) {
+        if (part.text) resultText += part.text;
+        if (part.inlineData && part.inlineData.data) {
+          resultImage = part.inlineData.data;
+          resultMimeType = part.inlineData.mimeType || 'image/png';
+        }
+      }
+    }
+  }
+
+  return { text: resultText, imageBase64: resultImage, mediaMimeType: resultMimeType };
+};
 
 /**
  * Modifies or generates text based on input text and a prompt.
@@ -225,7 +273,8 @@ export const generateVideoFromImage = async (
     
     if (signal?.aborted) throw new Error("使用者取消了影片生成。");
 
-    const freshAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Re-initialize with latest key if using AI Studio selector, otherwise use env key (via helper)
+    const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
 
     if (onProgress) onProgress('正在初始化 Veo 模型...');
     
@@ -258,7 +307,8 @@ export const generateVideoFromImage = async (
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!videoUri) throw new Error("Video generation completed but no URI returned.");
     
-    const downloadUrl = `${videoUri}&key=${process.env.API_KEY}`;
+    // Append API key for download if needed, using safe helper
+    const downloadUrl = `${videoUri}&key=${getApiKey()}`;
     return downloadUrl;
 
   } catch (error) {
@@ -479,25 +529,4 @@ export const analyzeContentForSuggestions = async (
         console.error("Analysis failed:", e);
         return [];
     }
-};
-
-const parseResponse = (response: any) => {
-  let resultText = '';
-  let resultImage = '';
-  let resultMimeType = '';
-
-  if (response.candidates && response.candidates.length > 0) {
-    const parts = response.candidates[0].content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.text) resultText += part.text;
-        if (part.inlineData && part.inlineData.data) {
-          resultImage = part.inlineData.data;
-          resultMimeType = part.inlineData.mimeType || 'image/png';
-        }
-      }
-    }
-  }
-
-  return { text: resultText, imageBase64: resultImage, mediaMimeType: resultMimeType };
 };
