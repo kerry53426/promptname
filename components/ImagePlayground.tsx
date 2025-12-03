@@ -217,6 +217,13 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
           onError("請先上傳圖片，才能進行分析。");
           return;
       }
+
+      // UX Improvement: Instant reopen if already loaded
+      if (suggestionCategories.length > 0 && !showSuggestions) {
+          setShowSuggestions(true);
+          return;
+      }
+
       setIsAnalyzing(true);
       setShowSuggestions(true);
       setSuggestionCategories([]);
@@ -522,7 +529,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
                                   key={i}
                                   onClick={() => {
                                       applyTemplate(s.prompt);
-                                      setShowSuggestions(false);
+                                      // Kept open for better UX
                                   }}
                                   className="flex flex-col items-start p-3 bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 hover:border-rose-400 dark:hover:border-rose-500 rounded-xl transition-all hover:shadow-md hover:-translate-y-1 text-left h-full group"
                               >
@@ -542,6 +549,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
         <div className="flex flex-col gap-4">
            {showTips && (
              <div className="flex items-start gap-3 bg-rose-50/80 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 p-3 rounded-xl animate-in slide-in-from-bottom-2">
+               {/* Tips Content Omitted */}
                <div className="p-1.5 bg-rose-200 dark:bg-rose-800 rounded-full flex-shrink-0 text-rose-600 dark:text-rose-200">
                  <Lightbulb size={14} />
                </div>

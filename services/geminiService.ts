@@ -6,16 +6,9 @@ export interface IWindow extends Window {
   SpeechRecognition: any;
 }
 
-// Helper to safely get the API key
-const getApiKey = () => {
-  if (typeof process !== 'undefined' && process.env?.API_KEY) {
-    return process.env.API_KEY;
-  }
-  return '';
-};
-
 // Initialize AI Client safely
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+// Using process.env.API_KEY as per coding guidelines
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * Modifies or generates text based on input text and a prompt.
@@ -232,7 +225,7 @@ export const generateVideoFromImage = async (
     
     if (signal?.aborted) throw new Error("使用者取消了影片生成。");
 
-    const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
+    const freshAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     if (onProgress) onProgress('正在初始化 Veo 模型...');
     
@@ -265,7 +258,7 @@ export const generateVideoFromImage = async (
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!videoUri) throw new Error("Video generation completed but no URI returned.");
     
-    const downloadUrl = `${videoUri}&key=${getApiKey()}`;
+    const downloadUrl = `${videoUri}&key=${process.env.API_KEY}`;
     return downloadUrl;
 
   } catch (error) {

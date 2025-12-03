@@ -207,6 +207,13 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
           onError("請先上傳圖片，才能進行分析。");
           return;
       }
+
+      // UX Improvement: Instant reopen if already loaded
+      if (suggestionCategories.length > 0 && !showSuggestions) {
+          setShowSuggestions(true);
+          return;
+      }
+
       setIsAnalyzing(true);
       setShowSuggestions(true);
       setSuggestionCategories([]);
@@ -418,7 +425,7 @@ export const ImageToTextPlayground: React.FC<ImageToTextPlaygroundProps> = ({ on
                                   key={i}
                                   onClick={() => {
                                       applyTemplate(s.prompt);
-                                      setShowSuggestions(false);
+                                      // Kept open for better UX
                                   }}
                                   className="flex flex-col items-start p-3 bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 rounded-xl transition-all hover:shadow-md hover:-translate-y-1 text-left h-full group"
                               >

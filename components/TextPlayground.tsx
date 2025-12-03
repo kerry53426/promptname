@@ -176,7 +176,10 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
     setIsProcessing(true);
     setOutputText('');
     addToHistory(prompt);
-    setShowSuggestions(false); // Hide suggestions on execute
+    
+    // User requested to keep suggestions open on selection, but maybe close on execute?
+    // Let's keep it open if they are experimenting. 
+    // setShowSuggestions(false); 
 
     let finalPrompt = prompt;
     if (selectedTone !== 'default') {
@@ -272,6 +275,14 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
           onError("請先輸入文字內容，才能進行分析。");
           return;
       }
+
+      // UX Improvement: If we already have suggestions and the panel is closed, just open it.
+      // This allows reopening without regeneration.
+      if (suggestionCategories.length > 0 && !showSuggestions) {
+          setShowSuggestions(true);
+          return;
+      }
+
       setIsAnalyzing(true);
       setShowSuggestions(true);
       setSuggestionCategories([]);
@@ -538,7 +549,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
                                   key={i}
                                   onClick={() => {
                                       applyTemplate(s.prompt);
-                                      setShowSuggestions(false);
+                                      // Kept open for better UX
                                   }}
                                   className="flex flex-col items-start p-3 bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-xl transition-all hover:shadow-md hover:-translate-y-1 text-left h-full group"
                               >
