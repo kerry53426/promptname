@@ -544,7 +544,7 @@ export const TextPlayground: React.FC<TextPlaygroundProps> = ({ onError, incomin
 
                       {/* Suggestions Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
-                          {suggestionCategories[activeSuggestionCategory]?.items.map((s, i) => (
+                          {suggestionCategories[activeSuggestionCategory]?.items?.map((s, i) => (
                               <button
                                   key={i}
                                   onClick={() => {

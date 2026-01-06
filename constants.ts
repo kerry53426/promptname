@@ -38,6 +38,7 @@ export const ASPECT_RATIOS = [
 
 export const TEXT_CATEGORIES = [
   { id: 'all', label: '全部' },
+  { id: 'social', label: '社群媒體' }, // New Category
   { id: 'refine', label: '潤飾優化' },
   { id: 'creative', label: '創意寫作' },
   { id: 'business', label: '職場商務' },
@@ -65,363 +66,496 @@ export const TEXT_TONES = [
   { id: 'journalistic', label: '新聞客觀' },
 ];
 
-export const TEXT_PROMPTS: PromptTemplate[] = [
-  // Refine
-  { id: 't1', label: '精簡摘要', prompt: '請將這段文字總結為簡短的摘要，保留核心觀點，長度控制在 50 字以內。', description: '快速抓重點。', category: 'refine' },
-  { id: 't2', label: '文法修正', prompt: '請檢查這段文字的文法錯誤、錯別字與標點符號使用，並提供修正後的版本。', description: '校對助手。', category: 'refine' },
-  { id: 't3', label: '語氣調整 (專業)', prompt: '將這段文字改寫為更加正式、專業的商務語氣，適合用於官方報告或郵件。', description: '提升專業度。', category: 'refine' },
-  { id: 't4', label: '語氣調整 (親切)', prompt: '將這段文字改寫為親切、溫暖且易於閱讀的口吻，適合用於社群媒體貼文。', description: '拉近距離。', category: 'refine' },
-  { id: 't5', label: '英文翻譯 (道地)', prompt: '將這段文字翻譯成流暢、自然的英文，避免逐字翻譯，確保符合母語人士的習慣。', description: '高品質翻譯。', category: 'refine' },
-  { id: 't6', label: '擴寫內容', prompt: '請根據這段文字的主題進行擴寫，增加更多細節、例子與論述，使其更加豐富完整。', description: '豐富文章。', category: 'refine' },
-  { id: 't7', label: '兒童易讀版', prompt: '請用適合 8 歲兒童閱讀的簡單詞彙和句型，重新解釋這段文字的內容。', description: '簡化概念。', category: 'refine' },
-  { id: 't8', label: '條列化重點', prompt: '將這段文字轉換為清晰的 Bullet Points 條列式重點，方便快速閱讀。', description: '整理結構。', category: 'refine' },
-  { id: 't9', label: '標題生成', prompt: '請為這段文字生成 5 個吸引人的標題，風格涵蓋：聳動、專業、疑問句、數據導向。', description: '下標靈感。', category: 'refine' },
-  { id: 't10', label: '關鍵字提取', prompt: '請提取這段文字中的 5-10 個 SEO 關鍵字，並依照重要性排序。', description: 'SEO 優化。', category: 'refine' },
-  { id: 't11', label: '段落重組', prompt: '請重新組織這段文字的段落結構，使其邏輯更通順，起承轉合更流暢。', description: '結構優化。', category: 'refine' },
-  { id: 't12', label: '被動轉主動', prompt: '將文字中所有的被動語態改寫為主動語態，使語句更有力。', description: '增強語氣。', category: 'refine' },
-  { id: 't13', label: '成語替換', prompt: '在適當的地方加入成語或諺語，使這段文字更具文學素養。', description: '文采修飾。', category: 'refine' },
-  { id: 't14', label: '去除贅字', prompt: '請刪除文字中的贅字與冗詞，使其更加精鍊，不改變原意。', description: '精簡文字。', category: 'refine' },
-  { id: 't15', label: '格式清理', prompt: '移除文字中多餘的換行、空格與特殊符號，整理成標準的段落格式。', description: '排版整理。', category: 'refine' },
-  { id: 't_new_1', label: '學術引用格式', prompt: '將這段參考文獻資訊轉換為標準的 APA 第 7 版引用格式。', description: '論文輔助。', category: 'refine' },
-  { id: 't_new_2', label: '去識別化', prompt: '請將這段文字中的人名、地址、電話、Email 等個人隱私資訊 (PII) 替換為 [已遮蔽]。', description: '隱私保護。', category: 'refine' },
-  { id: 't_new_3', label: '繁簡轉換 (台灣)', prompt: '將這段文字轉換為台灣習慣用語的繁體中文（例如：視頻->影片，質量->品質）。', description: '用語在地化。', category: 'refine' },
+const createTextPrompts = () => {
+  const prompts: PromptTemplate[] = [];
+  let idCounter = 1;
+  const add = (label: string, prompt: string, desc: string, cat: any) => {
+    prompts.push({ id: `t${idCounter++}`, label, prompt, description: desc, category: cat });
+  };
 
-  // Creative
-  { id: 'c1', label: '詩詞創作', prompt: '請根據這段文字的情境與意象，創作一首現代詩（或依需求改為七言絕句）。', description: '文字變詩歌。', category: 'creative' },
-  { id: 'c2', label: '劇本改寫', prompt: '將這段文字改寫成一段電影劇本對話，包含場景描述、角色動作與對白。', description: '敘事轉對話。', category: 'creative' },
-  { id: 'c3', label: '武俠風格', prompt: '請用金庸古龍式的武俠小說筆觸，重新描寫這段文字的情境。', description: '江湖味。', category: 'creative' },
-  { id: 'c4', label: '模擬對話', prompt: '模擬兩位持相反觀點的專家，針對這段文字的主題進行一場激烈的辯論。', description: '觀點碰撞。', category: 'creative' },
-  { id: 'c5', label: '廣告文案', prompt: '請為這段內容撰寫一句震撼人心的品牌 Slogan，以及一段感性的廣告旁白。', description: '品牌行銷。', category: 'creative' },
-  { id: 'c6', label: '微小說', prompt: '以此文字為靈感，創作一篇 140 字以內的極短篇小說，結局要有反轉。', description: '短篇故事。', category: 'creative' },
-  { id: 'c7', label: '歌詞創作', prompt: '將這段故事改寫成一首流行歌曲的歌詞，包含主歌 (Verse) 與副歌 (Chorus)。', description: '音樂靈感。', category: 'creative' },
-  { id: 'c8', label: '反派獨白', prompt: '以一個迷人反派角色的口吻來敘述這段內容，帶有傲慢與哲理。', description: '角色扮演。', category: 'creative' },
-  { id: 'c9', label: '意識流', prompt: '用意識流的寫作手法改寫這段經歷，強調內心流動與感官碎片。', description: '文學技巧。', category: 'creative' },
-  { id: 'c10', label: '童話改編', prompt: '將這個事件改編成一個黑暗童話故事，隱含寓意。', description: '故事重述。', category: 'creative' },
-  { id: 'c11', label: '脫口秀段子', prompt: '將這段嚴肅的內容改寫成一段幽默的脫口秀 (Stand-up comedy) 段子。', description: '幽默轉化。', category: 'creative' },
-  { id: 'c12', label: '日記體', prompt: '以第一人稱日記的形式記錄這件事，包含當下的心情與私密想法。', description: '個人視角。', category: 'creative' },
-  { id: 'c13', label: '角色扮演', prompt: '假設你是一位歷史學家，請用你的專業視角重新詮釋這段文字。', description: '視角切換。', category: 'creative' },
-  { id: 'c14', label: '辯論腳本', prompt: '請分別撰寫正方與反方的開場申論，針對這段文字所提出的議題。', description: '邏輯思辨。', category: 'creative' },
-  { id: 'c15', label: '電影獨白', prompt: '這是一段電影高潮處的主角內心獨白，請賦予它強烈的情感張力。', description: '情感表達。', category: 'creative' },
-  { id: 'c_new_1', label: '賽博龐克風', prompt: '用賽博龐克 (Cyberpunk) 的風格改寫這段文字，加入高科技低生活、霓虹、駭客等元素。', description: '科幻風格。', category: 'creative' },
-  { id: 'c_new_2', label: '恐怖小說', prompt: '將這段普通的描述改寫成令人毛骨悚然的恐怖小說片段，強調氛圍與未知的恐懼。', description: '驚悚風格。', category: 'creative' },
-  { id: 'c_new_3', label: '情書生成', prompt: '根據這些關鍵字，寫一封深情、動人但不肉麻的情書。', description: '情感表達。', category: 'creative' },
-  { id: 'c_new_4', label: '饒舌歌詞', prompt: '將這段內容改編成一段押韻的饒舌 (Rap) 歌詞，要有 Flow 和態度。', description: '嘻哈風格。', category: 'creative' },
-  { id: 'c_new_5', label: '文言文', prompt: '將這段白話文改寫為典雅的文言文。', description: '古文風格。', category: 'creative' },
+  // Social Media (New - 25+)
+  add('IG 貼文文案', '請為這段文字/主題撰寫一篇 Instagram 貼文，包含吸睛的開頭、分段清晰的內文、CTA (行動呼籲) 以及 10-15 個熱門 Hashtags。', 'Instagram 行銷。', 'social');
+  add('YouTube 標題生成', '請為這段影片腳本或主題生成 10 個高點擊率 (Clickbait) 但不誇大不實的 YouTube 標題。', '影音行銷。', 'social');
+  add('YouTube 影片描述', '請為這段影片內容撰寫 SEO 優化的影片描述 (Description)，包含時間戳記 (Timestamps) 的建議架構。', '影音行銷。', 'social');
+  add('TikTok 短影音腳本', '請將這段文字改寫為 30 秒的 TikTok/Reels 短影音腳本，包含分鏡畫面描述和旁白。', '短影音創作。', 'social');
+  add('LinkedIn 專業貼文', '請將這段文字改寫為適合發布在 LinkedIn 的專業觀點文章，語氣要展現行業領導力 (Thought Leadership)。', '職場品牌。', 'social');
+  add('Facebook 廣告文案', '請為這項產品/服務撰寫 3 個不同版本的 Facebook 廣告文案（痛點型、利益型、故事型）。', '廣告投放。', 'social');
+  add('推特串文 (Thread)', '請將這篇文章拆解為一組 Twitter/Threads 串文，每則推文不超過 280 字，並保持連貫性。', '社群擴散。', 'social');
+  add('小紅書種草文', '請用「小紅書」的風格撰寫這項產品的推薦文，多用 Emoji，語氣親切，強調使用體驗。', '社群行銷。', 'social');
+  add('SEO 關鍵字建議', '請分析這段文字，並列出 10 組適合做 SEO 優化的長尾關鍵字 (Long-tail Keywords)。', '搜尋優化。', 'social');
+  add('部落格文章大綱', '請根據這段主題，生成一份符合 SEO 結構的部落格文章大綱 (包含 H1, H2, H3 標題)。', '內容行銷。', 'social');
+  add('電子報主旨', '請為這封電子報內容撰寫 5 個會讓人忍不住想點開的郵件主旨 (Subject Lines)。', 'Email 行銷。', 'social');
+  add('Podcast 開場白', '請為這個 Podcast 主題撰寫一段 30 秒的精彩開場白，要能立刻抓住聽眾注意力。', '音頻創作。', 'social');
+  add('回覆酸民留言', '這是一則負面評論，請撰寫一則高情商、不卑不亢的官方回覆。', '公關危機。', 'social');
+  add('社群活動企劃', '請根據這段文字（品牌/節日），發想 3 個高互動率的社群抽獎或 UGC 活動企劃。', '社群營運。', 'social');
+  add('產品發表推文', '請撰寫一系列倒數計時的產品發表推文，營造期待感。', '產品行銷。', 'social');
+  add('KOL 合作邀約', '請撰寫一封給網紅 (Influencer) 的合作邀約信，內容要簡潔且具吸引力。', '網紅行銷。', 'social');
+  add('社群規範草案', '請為這個社群/Discord 伺服器草擬一份社群版規 (Community Guidelines)。', '社群管理。', 'social');
+  add('直播腳本大綱', '請為這場 1 小時的直播活動規劃詳細的流程腳本 (Run-down)。', '直播企劃。', 'social');
+  add('使用者見證修飾', '請將這段客戶回饋潤飾為通順且具說服力的使用者見證 (Testimonial)。', '口碑行銷。', 'social');
+  add('迷因文案發想', '請根據這個主題，發想 5 個適合製作迷因 (Meme) 的梗或情境。', '病毒行銷。', 'social');
 
-  // Business
-  { id: 'b1', label: '冷郵件 (Cold Email)', prompt: '根據這段產品描述，撰寫一封吸引人的開發信 (Cold Email)，目的是邀約潛在客戶進行通話。', description: '業務開發。', category: 'business' },
-  { id: 'b2', label: 'OKR 設定', prompt: '根據這段專案目標描述，協助制定一組標準的 OKR (Objectives and Key Results)。', description: '目標管理。', category: 'business' },
-  { id: 'b3', label: 'SWOT 分析', prompt: '根據這段公司或產品的描述，進行詳細的 SWOT 分析（優勢、劣勢、機會、威脅）。', description: '策略分析。', category: 'business' },
-  { id: 'b4', label: '會議紀錄', prompt: '將這段逐字稿整理成結構化的會議紀錄，包含決議事項 (Action Items) 與負責人。', description: '行政效率。', category: 'business' },
-  { id: 'b5', label: '新聞稿', prompt: '為這個產品發佈撰寫一份正式的新聞稿，包含標題、導言與聯絡資訊。', description: '公關宣傳。', category: 'business' },
-  { id: 'b6', label: '績效回饋', prompt: '根據這些工作表現紀錄，撰寫一份具建設性的績效評估回饋，採用「三明治溝通法」。', description: '管理技巧。', category: 'business' },
-  { id: 'b7', label: '電梯簡報', prompt: '將這個商業構想濃縮成 30 秒的電梯簡報 (Elevator Pitch)，強調痛點與解決方案。', description: '簡報技巧。', category: 'business' },
-  { id: 'b8', label: '職位描述 (JD)', prompt: '根據這段工作需求，撰寫一份專業的職位描述 (Job Description)，包含職責與資格。', description: '人資招聘。', category: 'business' },
-  { id: 'b9', label: '面試問題', prompt: '針對這個職位，列出 5 個深度面試問題，用以評估候選人的軟實力與專業能力。', description: '面試準備。', category: 'business' },
-  { id: 'b10', label: '危機處理聲明', prompt: '針對這個客訴或負面事件，草擬一份誠懇且專業的官方回應聲明。', description: '公關危機。', category: 'business' },
-  { id: 'b11', label: '產品問答集', prompt: '根據產品規格，生成 5 組常見問答 (FAQ)，涵蓋功能、價格與保固。', description: '客戶服務。', category: 'business' },
-  { id: 'b12', label: '使用場景描述', prompt: '描述此產品的三個具體使用場景，強調它如何解決用戶的實際問題。', description: '行銷素材。', category: 'business' },
-  { id: 'b13', label: '商業計畫摘要', prompt: '將這段凌亂的想法整理成一份商業計畫書的執行摘要 (Executive Summary)。', description: '創業募資。', category: 'business' },
-  { id: 'b14', label: '競爭者分析', prompt: '比較這段文字中提到的產品與市場上主要競爭對手的優劣勢。', description: '市場研究。', category: 'business' },
-  { id: 'b15', label: '電子報 (Newsletter)', prompt: '將這篇長文改寫成一期電子報，包含引言、重點摘要與行動呼籲 (CTA)。', description: '內容行銷。', category: 'business' },
-  { id: 'b_new_1', label: '拒絕信', prompt: '撰寫一封禮貌且專業的拒絕信（針對求職者或合作提案），保持未來合作的可能性。', description: '婉拒溝通。', category: 'business' },
-  { id: 'b_new_2', label: '加薪談判', prompt: '協助撰寫一份請求加薪或升遷的提案，列舉具體貢獻與市場行情數據。', description: '薪資談判。', category: 'business' },
-  { id: 'b_new_3', label: '道歉信', prompt: '針對這個失誤（如出貨延遲、資料錯誤），撰寫一封真誠的客戶道歉信，並提出補償方案。', description: '客戶維繫。', category: 'business' },
-  { id: 'b_new_4', label: '活動企劃案', prompt: '根據這個主題，生成一份活動企劃大綱，包含流程、預算估算與預期效益。', description: '活動策劃。', category: 'business' },
-  { id: 'b_new_5', label: '品牌故事', prompt: '根據創辦人的經歷與願景，撰寫一個感人且具啟發性的品牌故事。', description: '品牌建立。', category: 'business' },
-  { id: 'b_new_6', label: '使用者見證', prompt: '根據產品特點，模擬撰寫 3 則不同客群的正面使用者見證 (Testimonials)。', description: '社會證明。', category: 'business' },
+  // Refine (20)
+  add('精簡摘要', '請將這段文字總結為簡短的摘要，保留核心觀點，長度控制在 50 字以內。', '快速抓重點。', 'refine');
+  add('文法修正', '請檢查以下文字的文法錯誤，並進行修正，同時優化語句流暢度，但保持原意不變。', '修正錯誤與潤飾。', 'refine');
+  add('轉換為條列式', '請將這段文字整理成清晰的條列式重點（Bullet points），方便快速閱讀。', '結構化整理。', 'refine');
+  add('翻譯成英文', '請將這段文字翻譯成流暢、道地的英文。', '中翻英。', 'refine');
+  add('翻譯成日文', '請將這段文字翻譯成自然、禮貌的日文。', '中翻日。', 'refine');
+  add('擴寫內容', '請根據這段文字的核心思想，擴充更多細節和例子，使其成為一篇完整的文章。', '增加篇幅。', 'refine');
+  add('改寫為口語化', '請將這段文字改寫得更加口語化，像是在跟朋友聊天一樣。', '親切感。', 'refine');
+  add('改寫為正式語氣', '請將這段文字改寫為正式的書面語，適合用於官方文件。', '專業感。', 'refine');
+  add('提取關鍵字', '請從這段文字中提取 10 個最重要的關鍵字 (Keywords)。', 'SEO 與標籤。', 'refine');
+  add('段落重組', '請重新組織這段文字的段落結構，使其邏輯更加通順。', '結構優化。', 'refine');
+  add('簡化語言', '請用小學生都能聽懂的語言改寫這段文字。', '通俗易懂。', 'refine');
+  add('增加連接詞', '請在句子之間適當增加連接詞，使文章讀起來更連貫。', '流暢度。', 'refine');
+  add('去除冗言贅字', '請刪除這段文字中不必要的修飾詞和重複內容，使其更精煉。', '去蕪存菁。', 'refine');
+  add('強調重點', '請將這段文字中的關鍵訊息加粗（Bold）或用引號標註。', '視覺重點。', 'refine');
+  add('轉換為表格', '請將這段文字中的數據或對比資訊整理成 Markdown 表格。', '表格化。', 'refine');
+  add('同義詞替換', '請將這段文字中的常見詞彙替換為更高級或更精準的同義詞。', '詞彙升級。', 'refine');
+  add('被動轉主動', '請將這段文字中的被動語態盡量改寫為主動語態。', '語氣增強。', 'refine');
+  add('檢查歧義', '請指出這段文字中可能產生歧義的地方，並提供修改建議。', '清晰度。', 'refine');
+  add('縮短篇幅', '請將這段文字的字數縮減至原本的一半，但保留所有重要訊息。', '極簡化。', 'refine');
+  add('風格模仿', '請模仿蘋果 (Apple) 產品發布會的風格改寫這段文字。', '風格轉換。', 'refine');
 
-  // Coding
-  { id: 'code1', label: '解釋程式碼', prompt: '請解釋這段程式碼的功能、運作原理以及各變數的用途。', description: '代碼理解。', category: 'coding' },
-  { id: 'code2', label: '重構優化', prompt: '請重構這段程式碼，提高其可讀性與效能，並遵循 Clean Code 原則。', description: '代碼品質。', category: 'coding' },
-  { id: 'code3', label: '撰寫註解', prompt: '為這段程式碼加上詳細的 JSDoc 或 Python Docstring 註解。', description: '文件化。', category: 'coding' },
-  { id: 'code4', label: '單元測試', prompt: '請為這段函式撰寫涵蓋各種邊界情況 (Edge Cases) 的單元測試 (Unit Test)。', description: '測試覆蓋。', category: 'coding' },
-  { id: 'code5', label: '錯誤偵測', prompt: '找出這段程式碼中潛在的 Bug、安全漏洞或邏輯錯誤，並提供修復建議。', description: 'Debug。', category: 'coding' },
-  { id: 'code6', label: '語言轉換', prompt: '將這段 Python 程式碼轉換為等效的 TypeScript 程式碼，並保持功能一致。', description: '語言遷移。', category: 'coding' },
-  { id: 'code7', label: '正則表達式', prompt: '請解釋這個 Regex 的含義，或者根據需求撰寫一個 Regex。', description: 'Regex。', category: 'coding' },
-  { id: 'code8', label: 'SQL 查詢優化', prompt: '分析這個 SQL 查詢語句，並建議如何建立索引或重寫以提升查詢速度。', description: '資料庫。', category: 'coding' },
-  { id: 'code9', label: '複雜度分析', prompt: '分析這段演算法的時間複雜度 (Big O) 與空間複雜度。', description: '演算法。', category: 'coding' },
-  { id: 'code10', label: 'API 文件生成', prompt: '根據這段後端程式碼，生成一份 OpenAPI (Swagger) 格式的 API 規格文件。', description: 'API Spec。', category: 'coding' },
-  { id: 'code11', label: '偽代碼轉換', prompt: '將這段程式邏輯轉換為易於理解的偽代碼 (Pseudo-code)。', description: '邏輯抽象。', category: 'coding' },
-  { id: 'code12', label: 'React Hook 封裝', prompt: '將這段重複的邏輯封裝成一個 Custom React Hook。', description: '前端優化。', category: 'coding' },
-  { id: 'code_new_1', label: 'Dockerfile 生成', prompt: '為這個 Node.js/Python 專案生成一個優化的 Dockerfile，包含多階段建置 (Multi-stage build)。', description: '容器化。', category: 'coding' },
-  { id: 'code_new_2', label: 'GitHub Commit', prompt: '根據這段程式碼變更，生成 3 個符合 Conventional Commits 規範的 Commit Message。', description: '版控規範。', category: 'coding' },
-  { id: 'code_new_3', label: 'Tailwind 轉換', prompt: '將這段 CSS 樣式轉換為 Tailwind CSS 的 class 寫法。', description: 'CSS 框架。', category: 'coding' },
-  { id: 'code_new_4', label: 'SQL Schema 設計', prompt: '根據這個業務需求，設計一個關聯式資料庫的 Schema (ERD 描述)，包含 Primary/Foreign Keys。', description: '資料庫設計。', category: 'coding' },
-  { id: 'code_new_5', label: 'AWS Lambda 函式', prompt: '撰寫一個 AWS Lambda 函式 (Python/Node)，用於處理 S3 上傳事件並生成縮圖。', description: '雲端運算。', category: 'coding' },
-  { id: 'code_new_6', label: '資安檢測', prompt: '檢查這段程式碼是否存在 SQL Injection 或 XSS 攻擊的漏洞。', description: '安全審計。', category: 'coding' },
+  // Creative (20)
+  add('生成標題', '請為這段文字構思 5 個吸引人的標題，風格要多樣化。', '創意標題。', 'creative');
+  add('詩詞創作', '請以這段文字為主題，創作一首現代詩。', '文學創作。', 'creative');
+  add('寫成故事', '請根據這段文字的內容，發展成一個短篇小說的開頭。', '故事發想。', 'creative');
+  add('撰寫歌詞', '請將這段文字改寫成一首流行歌曲的歌詞，包含主歌和副歌。', '音樂創作。', 'creative');
+  add('電影劇本', '請將這段文字改寫成電影劇本的格式，包含場景描述和對話。', '劇本寫作。', 'creative');
+  add('笑話改寫', '請將這段文字的內容改寫成一個幽默的段子或笑話。', '幽默感。', 'creative');
+  add('廣告文案', '請為這段文字所描述的產品或服務，撰寫一句響亮的廣告 Slogan。', '行銷創意。', 'creative');
+  add('比喻法', '請用三個生動的比喻來解釋這段文字中的核心概念。', '形象化。', 'creative');
+  add('角色扮演', '請扮演一位古代哲學家，對這段文字的內容發表評論。', '觀點切換。', 'creative');
+  add('續寫結尾', '請為這段文字設想一個出人意料的結局 (Plot Twist)。', '創意結局。', 'creative');
+  add('IG 貼文', '請將這段文字改寫成一篇適合 Instagram 的貼文，加上 Emoji 和 Hashtags。', '社群媒體。', 'creative');
+  add('推特推文', '請將這段文字濃縮成 280 字以內的推特推文，要具備病毒傳播潛力。', '社群短文。', 'creative');
+  add('脫口秀段子', '請將這段文字改寫成一段 1 分鐘的單口喜劇 (Stand-up comedy) 腳本。', '喜劇腳本。', 'creative');
+  add('科幻風格', '請將這段文字的背景設定改為 2077 年的未來世界。', '科幻改寫。', 'creative');
+  add('奇幻風格', '請將這段文字的背景設定改為充滿魔法的中土世界。', '奇幻改寫。', 'creative');
+  add('恐怖風格', '請用懸疑恐怖的筆觸改寫這段文字，營造令人毛骨悚然的氛圍。', '氛圍營造。', 'creative');
+  add('兒童故事', '請將這段文字改寫成適合 5 歲兒童閱讀的睡前故事。', '童書創作。', 'creative');
+  add('藏頭詩', '請以這段文字的關鍵字創作一首藏頭詩。', '文字遊戲。', 'creative');
+  add('對聯創作', '請根據這段文字的主旨，創作一副對聯。', '傳統文學。', 'creative');
+  add('微小說', '請將這段文字濃縮成一篇 140 字以內的微小說，結局要反轉。', '極短篇。', 'creative');
 
-  // Technical & Logic
-  { id: 'tech1', label: 'Mermaid 流程圖', prompt: '將這段流程描述轉換為 Mermaid.js 的 Flowchart 語法代碼。', description: '視覺化。', category: 'technical' },
-  { id: 'tech2', label: 'SOP 製作', prompt: '將這段操作步驟整理成一份標準作業程序 (SOP) 文件，包含檢查點。', description: '流程標準化。', category: 'technical' },
-  { id: 'tech3', label: '邏輯謬誤偵測', prompt: '分析這段論述，指出其中是否存在邏輯謬誤（如稻草人謬誤、滑坡謬誤等）。', description: '批判思考。', category: 'technical' },
-  { id: 'tech4', label: '根本原因分析', prompt: '針對這個問題描述，使用「五個為什麼 (5 Whys)」法進行根本原因分析。', description: '問題解決。', category: 'technical' },
-  { id: 'tech5', label: '第一原理思考', prompt: '試著用第一原理 (First Principles) 拆解這個複雜問題，回歸最基本的真理。', description: '思維模型。', category: 'technical' },
-  { id: 'tech6', label: '六頂思考帽', prompt: '請分別戴上六頂思考帽（白紅黑黃綠藍），對這個議題進行多角度分析。', description: '水平思考。', category: 'technical' },
-  { id: 'tech7', label: '費米估算', prompt: '請展示如何透過費米估算 (Fermi Problem) 來推估這個問題的數量級。', description: '估算技巧。', category: 'technical' },
-  { id: 'tech8', label: '類比思考', prompt: '請用一個簡單的生活類比來解釋這個複雜的技術概念。', description: '概念簡化。', category: 'technical' },
-  { id: 'tech9', label: '系統思考', prompt: '分析這個現象背後的系統結構、增強迴路與調節迴路。', description: '系統動力學。', category: 'technical' },
-  { id: 'tech10', label: '情境規劃', prompt: '針對這個決策，規劃最好、最壞與最可能發生的三種未來情境。', description: '風險評估。', category: 'technical' },
-  { id: 'tech11', label: '數據解讀', prompt: '分析這組數據描述，提出三個具洞察力的結論 (Insights)。', description: '數據分析。', category: 'technical' },
-  { id: 'tech_new_1', label: '心智圖大綱', prompt: '將這個主題拆解為心智圖 (Mind Map) 的樹狀結構大綱。', description: '結構發想。', category: 'technical' },
-  { id: 'tech_new_2', label: '優缺點列表 (Pros/Cons)', prompt: '針對這個選項，列出詳細的優缺點對照表，並給出最終建議。', description: '決策輔助。', category: 'technical' },
-  { id: 'tech_new_3', label: '悖論分析', prompt: '解釋這個情境中存在的悖論 (Paradox)，並探討可能的解決路徑。', description: '哲學思考。', category: 'technical' },
-  { id: 'tech_new_4', label: '架構圖描述', prompt: '描述一個可行的系統架構（如微服務、Serverless），以解決這個技術問題。', description: '系統設計。', category: 'technical' },
-  
-  // Education & Life (New Category: Life)
-  { id: 'edu1', label: '蘇格拉底教學', prompt: '不要直接給答案，而是扮演蘇格拉底，透過提問引導我思考這個問題。', description: '引導式學習。', category: 'education' },
-  { id: 'edu2', label: '考題生成', prompt: '根據這段教材內容，出 3 題單選題和 1 題簡答題，並附上詳解。', description: '教學輔助。', category: 'education' },
-  { id: 'edu3', label: '單字記憶法', prompt: '請提供與這個主題相關的 10 個英文單字，並附上諧音記憶法或字根字首解析。', description: '語言學習。', category: 'education' },
-  { id: 'edu_new_1', label: '學習計畫', prompt: '為我想學習的這個技能（如 Python、鋼琴），制定一份為期 4 週的詳細學習計畫。', description: '自學規劃。', category: 'education' },
-  { id: 'edu_new_2', label: '概念解釋 (費曼)', prompt: '請使用「費曼技巧」，用最簡單的語言解釋這個複雜的概念，確保初學者能聽懂。', description: '觀念釐清。', category: 'education' },
-  
-  { id: 'life_1', label: '旅遊行程', prompt: '根據這個目的地與天數，規劃一份詳細的旅遊行程，包含景點、美食與交通建議。', description: '旅遊規劃。', category: 'life' },
-  { id: 'life_2', label: '食譜生成', prompt: '根據冰箱裡剩下的這些食材，推薦 3 道可以做的料理食譜。', description: '烹飪靈感。', category: 'life' },
-  { id: 'life_3', label: '健身課表', prompt: '為我設計一份一週的健身課表，目標是增肌/減脂，針對全身肌群。', description: '運動規劃。', category: 'life' },
-  { id: 'life_4', label: '送禮建議', prompt: '對象是 [描述特徵]，預算 [金額]，請推薦 5 個合適的生日/節日禮物。', description: '送禮指南。', category: 'life' },
-  { id: 'life_5', label: '心理諮商 (模擬)', prompt: '我現在感到 [情緒]，請扮演一位同理心的心理諮商師，給我一些安慰與調適建議。', description: '情緒支持。', category: 'life' },
-  
-  // Fun
-  { id: 'fun1', label: 'Emoji 翻譯', prompt: '將這段文字翻譯成僅由 Emoji 組成的訊息，讓它變得有趣又難猜。', description: '趣味密碼。', category: 'fun' },
-  { id: 'fun2', label: 'Z 世代用語', prompt: '將這段老派的文字改寫成 Z 世代 (Gen Z) 的流行用語，充滿網路梗。', description: '迷因化。', category: 'fun' },
-  { id: 'fun3', label: '星座運勢', prompt: '請用星座運勢的口吻，根據這段描述給出今日的幸運建議。', description: '玄學風格。', category: 'fun' },
-  { id: 'fun_new_1', label: '塔羅占卜', prompt: '請隨機抽取三張塔羅牌（過去、現在、未來），並針對我的問題進行解讀。', description: '趣味占卜。', category: 'fun' },
-  { id: 'fun_new_2', label: '貓語翻譯', prompt: '將這段話翻譯成貓咪傲嬌的語氣。', description: '角色扮演。', category: 'fun' },
-  { id: 'fun_new_3', label: '命名產生器', prompt: '為我的 [寵物/產品/遊戲角色] 生成 10 個酷炫、獨特的名字。', description: '命名靈感。', category: 'fun' },
+  // Business (Expanded to 25)
+  add('Email 回覆', '請根據這段文字（假設是收到的信件），撰寫一封專業且禮貌的回覆郵件。', '商務信件。', 'business');
+  add('會議記錄', '請將這段對話整理成正式的會議記錄，包含決議事項與待辦清單。', '行政效率。', 'business');
+  add('提案大綱', '請根據這段文字，草擬一份商業提案架構 (Proposal Outline)。', '提案準備。', 'business');
+  add('SWOT 分析', '請針對這段文字中提到的項目，進行 SWOT 分析 (優勢、劣勢、機會、威脅)。', '策略分析。', 'business');
+  add('新聞稿', '請根據這段文字，撰寫一份正式的新聞稿 (Press Release)。', '公關發布。', 'business');
+  add('演講稿', '請將這段文字改寫成一份 3 分鐘的演講稿，語氣要激勵人心。', '公眾演說。', 'business');
+  add('求職信', '請根據這段文字（個人經歷），撰寫一封求職信 (Cover Letter)。', '求職輔助。', 'business');
+  add('面試模擬', '請針對這段文字（職缺描述），列出 5 個可能會被問到的面試問題及建議回答。', '面試準備。', 'business');
+  add('產品描述', '請為這段文字中的產品撰寫一段吸引人的電商產品描述 (Product Description)。', '銷售文案。', 'business');
+  add('客戶抱怨處理', '這是一封客戶投訴信，請撰寫一封同理心強且具建設性的道歉信。', '危機處理。', 'business');
+  add('冷郵件 (Cold Email)', '請根據這段文字（產品介紹），撰寫一封給潛在客戶的開發信。', '業務開發。', 'business');
+  add('OKR 設定', '請根據這段文字的目標，協助制定 OKR (目標與關鍵結果)。', '目標管理。', 'business');
+  add('商業模式畫布', '請嘗試用商業模式畫布 (Business Model Canvas) 的架構分析這段文字。', '商業分析。', 'business');
+  add('競品分析', '請列出這段文字中產品的潛在競爭對手，並比較其優劣。', '市場調查。', 'business');
+  add('用戶畫像', '請根據這段文字，推測該產品的目標用戶畫像 (Persona)。', '用戶分析。', 'business');
+  add('行銷策略', '請根據這段文字，建議 3 個可行的數位行銷策略。', '行銷規劃。', 'business');
+  add('合約審閱', '請檢查這段合約條款（文字），指出對我不利的潛在風險。', '法律輔助。', 'business');
+  add('離職信', '請撰寫一封得體、專業的離職信。', '職場溝通。', 'business');
+  add('推薦信', '請為這段文字中描述的員工撰寫一封推薦信 (Reference Letter)。', '人資管理。', 'business');
+  add('績效自評', '請根據這些工作成果，撰寫一份年度績效自評。', '職場發展。', 'business');
+  add('電梯簡報', '請將這段商業構想濃縮成 30 秒的電梯簡報 (Elevator Pitch)。', '創業募資。', 'business');
+  add('價值主張畫布', '請根據這段產品描述，填寫價值主張畫布 (Value Proposition Canvas)。', '產品策略。', 'business');
+  add('專案時程表', '請根據這段任務描述，規劃一份甘特圖或專案時程表。', '專案管理。', 'business');
+  add('會議議程', '請為這場討論（主題）設計一份高效的會議議程 (Agenda)。', '會議管理。', 'business');
+  add('風險評估', '請分析這項計畫（文字）可能面臨的潛在風險及應對措施。', '風險管理。', 'business');
 
-  // Synthesis (Multi-text)
-  { id: 'syn1', label: '比較差異', prompt: '請詳細比較提供的這幾段文字，列出它們在觀點、語氣和內容上的主要差異。', description: '對比分析。', category: 'synthesis' },
-  { id: 'syn2', label: '觀點整合', prompt: '請將這幾段文字的觀點整合成一篇連貫的文章，消除矛盾並保留各方重點。', description: '內容融合。', category: 'synthesis' },
-  { id: 'syn3', label: '矛盾偵測', prompt: '請檢查這幾段文字之間是否存在邏輯矛盾或事實衝突，並具體指出來。', description: '邏輯檢查。', category: 'synthesis' },
-  { id: 'syn4', label: '風格融合', prompt: '請以第一段文字的風格重寫第二段文字的內容。', description: '風格遷移。', category: 'synthesis' },
-  { id: 'syn5', label: '摘要合併', prompt: '請閱讀所有提供的文本，並生成一份包含所有關鍵資訊的綜合摘要。', description: '綜合報告。', category: 'synthesis' },
-];
+  // Coding (Expanded to 25)
+  add('程式碼解釋', '請詳細解釋這段程式碼的運作原理，並指出潛在的優化空間。', '理解代碼。', 'coding');
+  add('產生單元測試', '請為這段程式碼撰寫完整的單元測試 (Unit Tests)，覆蓋各種邊界情況。', '測試生成。', 'coding');
+  add('Debug', '這段程式碼有錯誤，請找出 Bug 並提供修正後的版本。', '除錯助手。', 'coding');
+  add('轉換語言', '請將這段程式碼從 Python 轉換為 JavaScript (或 TypeScript)。', '語言轉換。', 'coding');
+  add('效能優化', '請分析這段程式碼的時間複雜度，並提供更高效的寫法。', '效能提升。', 'coding');
+  add('添加註解', '請為這段程式碼添加詳細的註解 (Comments)，符合文檔規範。', '代碼可讀性。', 'coding');
+  add('Regex 生成', '請根據這段文字的需求，生成對應的正規表達式 (Regex)。', '工具生成。', 'coding');
+  add('SQL 查詢', '請根據這段需求，撰寫對應的 SQL 查詢語法。', '資料庫查詢。', 'coding');
+  add('HTML/CSS 生成', '請根據這段描述，生成對應的 HTML 和 Tailwind CSS 代碼。', '前端開發。', 'coding');
+  add('API 文檔', '請為這段函數撰寫 Swagger/OpenAPI 格式的 API 文檔。', '文檔撰寫。', 'coding');
+  add('重構建議', '請提供這段程式碼的重構建議 (Refactoring)，使其更符合 Clean Code 原則。', '代碼品質。', 'coding');
+  add('Git Commit', '請根據這段代碼變更，生成一個符合規範的 Git Commit Message。', '版本控制。', 'coding');
+  add('類別設計', '請根據這段需求，設計對應的 Class 結構和 Interface。', '架構設計。', 'coding');
+  add('Shell Script', '請撰寫一個 Shell Script 來自動化這段文字描述的任務。', '自動化。', 'coding');
+  add('Docker File', '請為這段應用程式描述生成一個 Dockerfile。', '容器化。', 'coding');
+  add('安全性檢查', '請檢查這段程式碼是否存在 SQL Injection 或 XSS 等安全漏洞。', '資安檢查。', 'coding');
+  add('變數命名', '請為這段程式碼中的變數提供更具描述性的命名建議。', '命名規範。', 'coding');
+  add('React Component', '請將這段 HTML 改寫為 React Functional Component。', '前端框架。', 'coding');
+  add('Python Script', '請寫一個 Python 腳本來處理這段文字中描述的數據。', '腳本工具。', 'coding');
+  add('演算法實作', '請用最簡潔的方式實作這段文字描述的演算法。', '演算法。', 'coding');
+  add('JSON Schema', '請根據這段 JSON 數據，生成對應的 JSON Schema 定義。', '數據驗證。', 'coding');
+  add('TS Interface', '請將這段 JSON 轉換為 TypeScript Interface 定義。', '類型定義。', 'coding');
+  add('CSS Grid', '請生成一段 CSS Grid 代碼來實現這段文字描述的佈局。', '佈局生成。', 'coding');
+  add('Gitignore', '請為這個（語言/框架）專案生成一份標準的 .gitignore 文件。', '專案設定。', 'coding');
+  add('Cron Job', '請解釋這段 Crontab 設定的意思，或生成一個在（時間）執行的設定。', '排程任務。', 'coding');
 
-// --- IMAGE PROMPTS (Editing) ---
+  // Education (20)
+  add('專業術語解釋', '請找出這段文字中的專業術語，並用通俗易懂的語言解釋。', '概念簡化。', 'education');
+  add('蘇格拉底式提問', '請針對這段文字的觀點，提出三個引人深思的反問，引導深入思考。', '批判思考。', 'education');
+  add('出考題', '請根據這段文字的內容，出 5 題單選題附答案。', '學習測驗。', 'education');
+  add('製作閃卡', '請將這段文字整理成 Anki 閃卡 (正面/背面) 的格式。', '記憶輔助。', 'education');
+  add('心智圖大綱', '請將這段文字整理成心智圖 (Mind Map) 的階層文字大綱。', '知識結構。', 'education');
+  add('歷史背景', '請補充這段文字所涉及的歷史背景或相關人物介紹。', '背景知識。', 'education');
+  add('科學原理', '請解釋這段文字背後的科學原理或機制。', '科普知識。', 'education');
+  add('類比學習', '請用生活中的例子來類比這段文字中難懂的概念。', '類比教學。', 'education');
+  add('學習計畫', '請根據這段文字（學習目標），為我制定一個一週的學習計畫。', '計畫制定。', 'education');
+  add('辯論題目', '請根據這段文字的議題，設計一個正反方辯論題目及雙方論點。', '議題探討。', 'education');
+  add('語言學習', '請列出這段外文中的實用片語，並提供例句。', '語言學習。', 'education');
+  add('糾正發音', '請用文字描述這段外文中難讀單字的發音技巧。', '發音指導。', 'education');
+  add('論文摘要', '請閱讀這段論文內容，撰寫一份學術摘要。', '學術寫作。', 'education');
+  add('參考文獻格式', '請將這段書籍資訊轉換為 APA 格式的引用。', '學術引用。', 'education');
+  add('實驗設計', '請根據這段假設，設計一個簡單的科學實驗來驗證它。', '科學探究。', 'education');
+  add('哲學思考', '請從哲學的角度分析這段文字所隱含的價值觀。', '哲學思辨。', 'education');
+  add('數學解題', '請逐步解說這段數學問題的解題過程。', '數學家教。', 'education');
+  add('程式教學', '請像教初學者一樣，一步步解釋這段程式碼。', '程式教學。', 'education');
+  add('寫作指導', '請分析這段文章的寫作技巧，並給出改進建議。', '寫作教學。', 'education');
+  add('跨學科連結', '請說明這段文字的主題與其他學科（如藝術、歷史）的關聯。', '跨域學習。', 'education');
+
+  // Life/Fun/Synthesis (20)
+  add('食譜生成', '請根據這些食材，推薦一道料理並提供詳細食譜。', '烹飪助手。', 'life');
+  add('旅遊行程', '請根據這段文字（地點與天數），規劃一份旅遊行程表。', '旅遊規劃。', 'life');
+  add('送禮建議', '請根據這段文字（對象描述），推薦 3 個合適的禮物。', '送禮指南。', 'life');
+  add('星座運勢', '請根據這段文字（星座），生成一份今日運勢與幸運色。', '趣味占卜。', 'life');
+  add('塔羅解牌', '我抽到了這張牌（文字描述），請為我解讀它的含義。', '趣味占卜。', 'life');
+  add('電影推薦', '請根據這段文字（我喜歡的電影風格），推薦 5 部類似的電影。', '影視推薦。', 'life');
+  add('書籍推薦', '請推薦幾本與這段文字主題相關的經典書籍。', '閱讀清單。', 'life');
+  add('健身菜單', '請根據這段文字（個人目標），設計一份健身訓練菜單。', '健康管理。', 'life');
+  add('省錢妙招', '請根據這段文字（生活開銷），提供一些省錢的建議。', '理財建議。', 'life');
+  add('心理測驗', '請根據這段文字，設計一個有趣的心理測驗。', '趣味測驗。', 'fun');
+  add('笑話生成', '請根據這段文字的主題，講一個冷笑話。', '幽默一下。', 'fun');
+  add('角色對話', '請模擬這段文字中兩個角色之間的對話。', '情境模擬。', 'fun');
+  add('比較異同', '請比較這兩段文字（或概念）的異同之處，並以表格呈現。', '比較分析。', 'synthesis');
+  add('觀點綜合', '請綜合這多段文字的觀點，歸納出一個共同的結論。', '綜合歸納。', 'synthesis');
+  add('矛盾分析', '請指出這幾段文字之間是否存在矛盾或衝突之處。', '邏輯檢查。', 'synthesis');
+  add('時間軸整理', '請將這幾段文字中的事件按時間順序整理成時間軸。', '時序整理。', 'synthesis');
+  add('優缺點彙整', '請從這幾段評論中，彙整出該產品的優點與缺點。', '評論分析。', 'synthesis');
+  add('主題關聯', '請分析這幾段看似無關的文字，找出它們潛在的關聯性。', '深度洞察。', 'synthesis');
+  add('摘要合併', '請將這多篇文章合併成一份流暢的總摘要。', '多文摘要。', 'synthesis');
+  add('風格統一', '請將這幾段不同風格的文字，統一改寫為同一種風格。', '風格一致化。', 'synthesis');
+
+  return prompts;
+};
+
+export const TEXT_PROMPTS = createTextPrompts();
+
+// --- IMAGE CATEGORIES & PROMPTS ---
 
 export const IMAGE_CATEGORIES = [
   { id: 'all', label: '全部' },
   { id: 'editing', label: '修圖改圖' },
   { id: 'filter', label: '濾鏡特效' },
+  { id: 'style', label: '藝術風格' },
   { id: 'infographic', label: '設計與圖表' },
   { id: 'technical', label: '分析識別' }, 
-  { id: 'creative', label: '創意風格' },
+  { id: 'lighting', label: '光影調整' },
+  { id: 'creative', label: '創意合成' },
 ];
 
-export const IMAGE_PROMPTS: PromptTemplate[] = [
-  // Editing (修圖)
-  { id: 'i1', label: '移除背景', prompt: '將這張圖片的背景完全移除，變為透明背景，保留主體的邊緣細節。', description: '去背功能。', category: 'editing' },
-  { id: 'i2', label: '更換天空', prompt: '將圖片中的天空替換為湛藍的晴空，帶有幾朵白雲，光線要自然融合。', description: '風景修圖。', category: 'editing' },
-  { id: 'i16', label: '細節重繪', prompt: '重新繪製圖片的特定區域，例如：移除照片中的雜物、為人物的表情做細微調整、或是改變背景的元素。', description: '局部細緻修改。', category: 'editing' },
-  { id: 'i98', label: '風格穿搭', prompt: '識別人物當前的服裝風格，並將其替換為 [指定風格，如：Y2K、老錢風] 的穿搭。保留人物姿態，更換衣物與配件。', description: '風格換裝。', category: 'editing' },
-  { id: 'i4', label: '添加元素', prompt: '在圖片的適當位置添加一個新元素，例如：為人物加上眼鏡、在風景中加入一隻鳥。', description: '讓AI融入新物件。', category: 'editing' },
-  { id: 'i5', label: '銳化細節', prompt: '銳化這張圖片的細節，使其更加清晰，特別是紋理和邊緣。', description: '提升圖片的清晰度。', category: 'editing' },
-  { id: 'i_edit_1', label: '局部重繪', prompt: '重新繪製圖片的特定區域，例如：移除照片中的雜物、為人物的表情做細微調整、或是改變背景的元素。', description: '局部細緻修改。', category: 'editing' }, 
-  { id: 'i_edit_2', label: '人像光澤', prompt: '為圖片中的人像添加健康的光澤感，使皮膚看起來更光滑，眼神更有神，整體呈現高級美顏效果。', description: '為人像添加美顏效果。', category: 'editing' },
-  { id: 'i_edit_3', label: '移軸攝影', prompt: '將這張風景照模擬成移軸攝影 (Tilt-shift) 效果，讓場景看起來像微縮模型玩具。', description: '微縮模型感。', category: 'editing' },
-  { id: 'i_edit_4', label: '暗角效果', prompt: '為圖片四周添加柔和的暗角 (Vignette)，引導視覺焦點集中在畫面中央。', description: '氛圍暗角。', category: 'editing' },
-  { id: 'i_edit_5', label: '去霧清晰', prompt: '去除圖片中的霧氣與朦朧感，提高對比度與清晰度，還原景物原色。', description: 'Dehaze。', category: 'editing' },
-  { id: 'i_edit_6', label: '色彩校正', prompt: '校正圖片的白平衡，去除色偏，使膚色與環境色看起來自然準確。', description: '白平衡。', category: 'editing' },
-  { id: 'i_edit_7', label: ' HDR 效果', prompt: '增強圖片的動態範圍，提亮陰影並保留高光細節，呈現 HDR 攝影風格。', description: '高動態範圍。', category: 'editing' },
-  { id: 'i_edit_8', label: '降噪處理', prompt: '減少圖片中的 ISO 雜訊與顆粒感，使畫面更加純淨平滑。', description: '畫質修復。', category: 'editing' },
-  { id: 'i_edit_9', label: '增加景深', prompt: '模擬大光圈鏡頭效果，模糊背景，使前景主體更加突出 (Bokeh)。', description: '背景虛化。', category: 'editing' },
-  { id: 'i_edit_10', label: '老照片修復', prompt: '修復這張老照片，去除刮痕與摺痕，並適度上色還原當年風貌。', description: '照片修復。', category: 'editing' },
-  { id: 'i_new_e1', label: '去除路人', prompt: '識別並移除背景中的遊客和路人，並自動修補背景，使畫面更乾淨。', description: '旅遊照救星。', category: 'editing' },
-  { id: 'i_new_e2', label: '牙齒美白', prompt: '為圖片中的人物進行牙齒美白，保持自然光澤，不顯得過度修飾。', description: '人像美容。', category: 'editing' },
-  { id: 'i_new_e3', label: '更換髮色', prompt: '將人物的頭髮顏色更換為 [指定顏色]，保留髮絲細節與光澤感。', description: '造型嘗試。', category: 'editing' },
-  { id: 'i_new_e4', label: '紅眼消除', prompt: '檢測並修復人物眼中的紅眼現象，恢復自然的瞳孔顏色。', description: '照片修復。', category: 'editing' },
-  { id: 'i_new_e5', label: '增加笑容', prompt: '微調人物的嘴角，使其露出自然、親切的微笑。', description: '表情調整。', category: 'editing' },
-  { id: 'i_new_e6', label: '眼鏡反光去除', prompt: '去除眼鏡鏡片上的反光或眩光，讓眼睛清晰可見。', description: '細節修復。', category: 'editing' },
-  { id: 'i_new_e7', label: '建築拉直', prompt: '校正建築物的透視變形，使垂直線條保持垂直，模擬移軸鏡頭效果。', description: '建築攝影。', category: 'editing' },
-  { id: 'i_new_e8', label: '季節轉換(雪景)', prompt: '將場景轉換為冬季雪景，覆蓋白雪，樹木掛霜，營造寒冷氛圍。', description: '場景變換。', category: 'editing' },
-  { id: 'i_new_e9', label: '季節轉換(秋季)', prompt: '將場景中的植物與樹葉轉為金黃色與橘紅色，呈現秋天氛圍。', description: '場景變換。', category: 'editing' },
-  { id: 'i_new_e10', label: '產品去背合成', prompt: '將產品主體去背，並合成到一個簡約的高級攝影棚背景中，帶有柔和投影。', description: '電商修圖。', category: 'editing' },
+const createImagePrompts = () => {
+  const prompts: PromptTemplate[] = [];
+  let idCounter = 1;
+  const add = (label: string, prompt: string, desc: string, cat: any) => {
+    prompts.push({ id: `i${idCounter++}`, label, prompt, description: desc, category: cat });
+  };
 
-  // Filters (濾鏡)
-  { id: 'i_tone_1', label: '調整色調', prompt: '調整這張圖片的整體色調，使其呈現更溫暖或更冷冽的感覺。', description: '改變圖片氛圍。', category: 'filter' },
-  { id: 'i_film_1', label: '電影濾鏡', prompt: '將這張圖片模擬成經典電影的色彩風格，例如：東京物語或黑色電影。', description: '模仿電影視覺風格。', category: 'filter' },
-  { id: 'i_retro_1', label: '復古插畫', prompt: '將這張圖片轉換成復古風格的插畫，類似於舊雜誌或書籍中的插圖。', description: '模仿舊時代插畫風格。', category: 'filter' },
-  { id: 'i_cartoon_1', label: '卡通化', prompt: '將這張圖片轉換成卡通動畫風格，色彩鮮豔，線條簡潔。', description: '藝術濾鏡效果。', category: 'filter' },
-  { id: 'i17', label: '電影質感', prompt: '為這張圖片添加電影感的濾鏡，調整色彩飽和度和對比度，使其看起來像電影劇照。', description: '電影視覺風格', category: 'filter' },
-  { id: 'i_art_1', label: '浮世繪', prompt: '將這張圖片轉換為日本浮世繪風格，使用木刻版畫的線條與傳統配色。', description: '葛飾北齋風。', category: 'filter' },
-  { id: 'i_art_2', label: '普普藝術', prompt: '使用安迪沃荷 (Andy Warhol) 的普普藝術風格重繪此圖，使用高飽和度與重複色塊。', description: '波普風。', category: 'filter' },
-  { id: 'i_art_3', label: '剪紙藝術', prompt: '將圖片內容轉化為層次分明的剪紙藝術風格，呈現光影與紙張質感。', description: '工藝質感。', category: 'filter' },
-  { id: 'i_art_4', label: '印象派', prompt: '模仿莫內印象派畫風，使用短促的筆觸與光影變化來重繪此圖。', description: '油畫質感。', category: 'filter' },
-  { id: 'i_art_5', label: '立體主義', prompt: '以畢卡索立體主義風格重構圖片，使用幾何碎片與多視角拼貼。', description: '抽象幾何。', category: 'filter' },
-  { id: 'i_art_6', label: '水墨畫', prompt: '將圖片轉換為中國傳統水墨畫風格，強調留白與墨色濃淡變化。', description: '東方美學。', category: 'filter' },
-  { id: 'i_art_7', label: '像素藝術', prompt: '將圖片轉換為 8-bit 或 16-bit 的像素藝術風格，類似懷舊電玩畫面。', description: 'Pixel Art。', category: 'filter' },
-  { id: 'i_art_8', label: '賽博龐克', prompt: '為圖片添加賽博龐克濾鏡，使用霓虹藍紫配色、故障藝術 (Glitch) 與科技介面元素。', description: '未來科技感。', category: 'filter' },
-  { id: 'i_art_9', label: '新藝術運動', prompt: '使用慕夏 (Mucha) 的新藝術風格，加入流動的曲線、花卉裝飾與優雅的輪廓線。', description: 'Art Nouveau。', category: 'filter' },
-  { id: 'i_art_10', label: '蒸汽龐克', prompt: '將圖片風格轉為蒸汽龐克，加入黃銅齒輪、維多利亞時代服飾與蒸汽機械元素。', description: '復古科幻。', category: 'filter' },
-  { id: 'i_art_11', label: '馬賽克拼貼', prompt: '將圖片轉化為由彩色小磁磚拼貼而成的馬賽克藝術風格。', description: '裝飾藝術。', category: 'filter' },
-  { id: 'i_art_12', label: '彩色玻璃', prompt: '模擬教堂彩色玻璃窗的效果，使用粗黑線條分隔鮮豔的色塊。', description: '光影藝術。', category: 'filter' },
-  { id: 'i_new_f1', label: '故障藝術', prompt: '應用 Glitch Art 效果，模擬數位訊號損壞、RGB 分離與畫面撕裂感。', description: '數位崩壞。', category: 'filter' },
-  { id: 'i_new_f2', label: '拍立得風格', prompt: '模擬拍立得 (Polaroid) 照片質感，稍微過曝的閃光燈效果與特定色偏。', description: '復古隨拍。', category: 'filter' },
-  { id: 'i_new_f3', label: '藍曬圖', prompt: '將圖片轉換為藍曬圖 (Cyanotype) 風格，呈現單色的普魯士藍色調。', description: '古典顯影。', category: 'filter' },
-  { id: 'i_new_f4', label: '素描手繪', prompt: '將圖片轉化為鉛筆素描風格，強調線條與陰影的筆觸。', description: '手繪質感。', category: 'filter' },
-  { id: 'i_new_f5', label: '粉筆畫', prompt: '模擬黑板上的粉筆畫效果，黑色背景與白色粉筆線條。', description: '教學風格。', category: 'filter' },
-  { id: 'i_new_f6', label: '低多邊形', prompt: '將圖片轉換為低多邊形 (Low Poly) 風格，由幾何三角形組成。', description: '3D 幾何。', category: 'filter' },
-  { id: 'i_new_f7', label: '熱感應成像', prompt: '模擬熱感應攝影機的效果，使用紅外線熱譜圖的偽彩色。', description: '科技視覺。', category: 'filter' },
-  { id: 'i_new_f8', label: 'ASCII 藝術', prompt: '將圖片轉換為由字符組成的 ASCII Art 風格。', description: '代碼藝術。', category: 'filter' },
-  { id: 'i_new_f9', label: '野獸派', prompt: '使用馬諦斯野獸派風格，使用強烈、不自然的色彩與狂野的筆觸。', description: '色彩衝擊。', category: 'filter' },
-  { id: 'i_new_f10', label: '版畫風格', prompt: '模擬粗獷的黑白木刻版畫效果，強調對比與刀痕質感。', description: '版畫藝術。', category: 'filter' },
-  
-  // Design & Infographic (設計與圖表)
-  { id: 'i_struct_1', label: '爆炸圖', prompt: '將圖片中的物品繪製成工程爆炸圖 (Exploded View)，展示其內部零件與組裝順序。', description: '工程結構分析。', category: 'infographic' },
-  { id: 'i_struct_2', label: '結構藍圖', prompt: '將此物品轉換為藍底白線的工程藍圖 (Blueprint)，標示尺寸與結構線條。', description: '工程製圖風。', category: 'infographic' },
-  { id: 'i_struct_3', label: '透視圖', prompt: '繪製此場景的兩點透視圖，保留建築線條與空間深度感。', description: '建築透視。', category: 'infographic' },
-  { id: 'i_struct_4', label: '3D 線框', prompt: '將圖片中的物體轉換為 3D Wireframe 線框模式，展現其幾何拓撲結構。', description: '3D 模型預覽。', category: 'infographic' },
-  { id: 'i_struct_5', label: '部件標註', prompt: '識別圖片中的主要部件，並拉出引線進行標註 (Callouts)，形成說明書風格。', description: '使用說明圖。', category: 'infographic' },
-  { id: 'i_info_1', label: '資訊圖表化', prompt: '根據這張包含數據或文字的圖片，重新設計成一張現代化、易讀的資訊圖表 (Infographic)。', description: '視覺化數據。', category: 'infographic' },
-  { id: 'i_info_2', label: '視覺摘要', prompt: '將文件圖片中的重點內容提取出來，並轉化為一張帶有圖示與簡潔文字的視覺摘要圖。', description: '懶人包製作。', category: 'infographic' },
-  { id: 'i_new_d1', label: 'UI 線框圖', prompt: '將這張網頁或 App 的截圖轉換為低保真線框圖 (Wireframe)，去除顏色與細節，僅保留佈局。', description: 'UI 設計。', category: 'infographic' },
-  { id: 'i_new_d2', label: '平面配置圖', prompt: '根據這張室內照片，繪製一張俯視的平面配置圖 (Floor Plan)。', description: '室內設計。', category: 'infographic' },
-  { id: 'i_new_d3', label: '向量插圖化', prompt: '將圖片轉換為扁平化 (Flat Design) 的向量插圖風格，色塊清晰。', description: '插圖設計。', category: 'infographic' },
-  { id: 'i_new_d4', label: '手繪草圖', prompt: '將這個產品照片轉換為工業設計的手繪草圖 (Sketch)，帶有輔助線。', description: '設計提案。', category: 'infographic' },
-  { id: 'i_new_d5', label: '等距視角', prompt: '將場景轉換為 2.5D 等距視角 (Isometric) 圖示風格。', description: '遊戲視角。', category: 'infographic' },
+  // Editing (20)
+  add('移除背景', '將這張圖片的背景完全移除，變為透明背景。', '去背。', 'editing');
+  add('更換背景為海灘', '保留主體，將背景替換為陽光明媚的熱帶海灘。', '換背景。', 'editing');
+  add('更換背景為辦公室', '保留主體，將背景替換為現代化的辦公室。', '換背景。', 'editing');
+  add('更換背景為星空', '保留主體，將背景替換為璀璨的星空。', '換背景。', 'editing');
+  add('移除路人', '請移除背景中的路人和雜物，只保留主角。', '路人消除。', 'editing');
+  add('移除文字', '請移除圖片中的所有文字和浮水印，並修補背景。', '去字。', 'editing');
+  add('增加眼鏡', '請給圖片中的人物戴上一副黑框眼鏡。', '添加配件。', 'editing');
+  add('增加帽子', '請給圖片中的人物戴上一頂時尚的帽子。', '添加配件。', 'editing');
+  add('換衣服顏色', '請將人物的衣服顏色換成紅色。', '換色。', 'editing');
+  add('換頭髮顏色', '請將人物的頭髮染成銀灰色。', '換色。', 'editing');
+  add('增加鬍鬚', '請給圖片中的人物加上自然的鬍鬚。', '人像修改。', 'editing');
+  add('變年輕', '請讓圖片中的人物看起來年輕 20 歲。', '人像修改。', 'editing');
+  add('變老', '請讓圖片中的人物看起來像 80 歲的老人。', '人像修改。', 'editing');
+  add('閉眼轉睜眼', '請嘗試修復人物閉眼的問題，讓眼睛自然張開。', '修復。', 'editing');
+  add('人像美顏', '平滑皮膚，去除瑕疵，增強眼神光，保持自然質感。', '美顏。', 'editing');
+  add('瘦臉', '稍微修飾臉型，使其看起來更瘦一些。', '液化。', 'editing');
+  add('增加笑容', '請讓圖片中的人物露出自然的微笑。', '表情修改。', 'editing');
+  add('更換天空', '將陰天背景替換為藍天白雲。', '換天。', 'editing');
+  add('增加倒影', '在主體下方增加自然的水面倒影。', '倒影。', 'editing');
+  add('擴展畫面', '請向四周擴展圖片邊界 (Outpainting)，補全場景。', '擴圖。', 'editing');
 
-  // Technical (Image Edit Analysis - OOTD etc)
-  { id: 'i_ootd', label: 'OOTD 分析', prompt: '分析圖片中人物的穿搭風格 (OOTD)。列出各單品（上衣、褲子、鞋子、配件）的特色，並評價其配色與時尚感。', description: '穿搭解析。', category: 'technical' },
-  { id: 'i_char_1', label: '表情細節分析', prompt: '分析圖片中人物的微表情，解讀其眉毛、眼睛、嘴角的細微變化，推測其當下情緒（如：強顏歡笑、驚喜、輕蔑）。', description: '心理分析。', category: 'technical' },
-  { id: 'i_char_2', label: '服裝風格識別', prompt: '識別人物的服裝風格（如：波西米亞、極簡主義、街頭潮流），並提供適合的場合與搭配建議。', description: '時尚顧問。', category: 'technical' },
-  { id: 'i_char_3', label: '生成頭像', prompt: '基於這張人像照片，生成一個風格化的社群媒體頭像，保留特徵但更具設計感。', description: '個人品牌。', category: 'technical' },
-  { id: 'i_char_4', label: '姿態與動作捕捉', prompt: '分析人物的肢體語言與姿態，描述其重心、動態線與可能意圖（如：防衛性姿勢、開放性姿勢）。', description: '動作分析。', category: 'technical' },
-  { id: 'i_char_5', label: '藝術肖像', prompt: '以這張照片為基礎，繪製一幅文藝復興風格的油畫肖像，強調光影與莊重感。', description: '古典畫風。', category: 'technical' },
-  { id: 'i_new_t1', label: '色彩提取', prompt: '提取這張圖片的色彩調色盤 (Color Palette)，列出主要的 5 種顏色代碼 (Hex)。', description: '設計輔助。', category: 'technical' },
-  { id: 'i_new_t2', label: '構圖線輔助', prompt: '在圖片上疊加三分法、黃金螺旋或對角線的構圖輔助線，以分析其構圖。', description: '攝影教學。', category: 'technical' },
-  { id: 'i_new_t3', label: '熱點分析', prompt: '預測這張圖片中最吸引人眼球的視覺熱點 (Saliency Map)。', description: '視覺行銷。', category: 'technical' },
-  
-  // Creative (Advanced Edit)
-  { id: 'i_adv_1', label: '液體化', prompt: '將圖片中的主體轉化為液體流動的形態，保持輪廓但改變材質為水或熔岩。', description: '材質轉換。', category: 'creative' },
-  { id: 'i_adv_2', label: '水晶質感', prompt: '將畫面中的物體材質變為透明剔透的水晶或玻璃，呈現折射光芒。', description: '3D 材質。', category: 'creative' },
-  { id: 'i_adv_3', label: '末日風格', prompt: '將場景改造為末日廢土風格，加入荒煙蔓草、廢墟與鏽蝕質感。', description: '場景改造。', category: 'creative' },
-  { id: 'i_adv_4', label: '水下世界', prompt: '將整個場景移至水下，添加藍色色調、氣泡、波光紋理與海洋生物。', description: '環境轉換。', category: 'creative' },
-  { id: 'i_adv_5', label: '金屬鑄造', prompt: '將物體質感轉變為拋光的金屬（如黃金、白銀或鉻），強調反射與光澤。', description: '金屬質感。', category: 'creative' },
-  { id: 'i_new_c1', label: '雲朵化', prompt: '將物體轉化為雲朵的形態，漂浮在天空中，形狀保持可辨識。', description: '幻想風格。', category: 'creative' },
-  { id: 'i_new_c2', label: '摺紙藝術', prompt: '將圖片內容變成摺紙 (Origami) 藝術，展現紙張的幾何摺痕。', description: '工藝風格。', category: 'creative' },
-  { id: 'i_new_c3', label: '樂高化', prompt: '將世界變成由樂高積木 (LEGO) 搭建而成的樣子。', description: '玩具風格。', category: 'creative' },
-  { id: 'i_new_c4', label: '羊毛氈', prompt: '將材質轉變為毛茸茸的羊毛氈 (Needle Felting) 質感。', description: '可愛風格。', category: 'creative' },
-  { id: 'i_new_c5', label: '食物造景', prompt: '將風景中的山脈變成麵包，河流變成牛奶，樹木變成花椰菜。', description: '微縮攝影。', category: 'creative' },
-  { id: 'i_new_c6', label: '雙重曝光', prompt: '將這張人像與森林/星空風景進行雙重曝光 (Double Exposure) 合成。', description: '藝術合成。', category: 'creative' },
-  { id: 'i_new_c7', label: '石化效果', prompt: '將一切變為古老的岩石雕像，帶有青苔與裂痕。', description: '神話風格。', category: 'creative' },
-];
+  // Filter (20)
+  add('黑白老照片', '轉換為顆粒感強烈的黑白老照片風格。', '復古。', 'filter');
+  add('拍立得風格', '模擬 Polaroid 拍立得的色調和邊框效果。', '復古。', 'filter');
+  add('Lomo 風格', '增加暗角和高對比度，模擬 Lomo 相機效果。', '風格化。', 'filter');
+  add('底片質感', '模擬 Kodak Portra 400 底片的溫暖質感。', '膠片。', 'filter');
+  add('賽博龐克', '增加霓虹藍紫光色調，高對比度 Cyberpunk 風格。', '科幻。', 'filter');
+  add('蒸汽波', '應用 Vaporwave 風格，粉紫配色，復古數位感。', '藝術。', 'filter');
+  add('日系小清新', '調亮畫面，降低對比，增加青藍色調，日系空氣感。', '日系。', 'filter');
+  add('電影質感', '增加寬銀幕黑邊，調整為電影 Teal & Orange 色調。', '電影感。', 'filter');
+  add('HDR 效果', '增強動態範圍，讓亮部和暗部細節都清晰可見。', 'HDR。', 'filter');
+  add('柔焦效果', '增加夢幻的柔焦效果 (Soft focus)，營造浪漫氛圍。', '柔焦。', 'filter');
+  add('暈影效果', '在圖片四周增加黑色暈影 (Vignette)，突出主體。', '暈影。', 'filter');
+  add('去霧', '去除畫面中的霧氣，使景物更加清晰通透。', '去霧。', 'filter');
+  add('懷舊褐色', '應用 Sepia 褐色濾鏡，營造歷史感。', '褐色。', 'filter');
+  add('冷色調', '將整體色調調整為冷藍色，營造冷靜氛圍。', '調色。', 'filter');
+  add('暖色調', '將整體色調調整為暖黃色，營造溫馨氛圍。', '調色。', 'filter');
+  add('高飽和度', '增強色彩飽和度，讓畫面鮮豔奪目。', '調色。', 'filter');
+  add('低飽和度', '降低色彩飽和度，營造低調質感。', '調色。', 'filter');
+  add('銳化', '增強圖片的邊緣銳利度，使細節更清晰。', '銳化。', 'filter');
+  add('模糊背景', '模擬大光圈效果，模糊背景 (Bokeh)，突出主體。', '景深。', 'filter');
+  add('故障藝術', '增加 Glitch Art 故障雜訊效果。', '故障風。', 'filter');
 
-// --- TEXT TO IMAGE CATEGORIES & PROMPTS ---
+  // Style (20)
+  add('素描風格', '轉換為精細的鉛筆素描 (Pencil Sketch)。', '素描。', 'style');
+  add('油畫風格', '轉換為梵谷風格的印象派油畫 (Oil Painting)。', '油畫。', 'style');
+  add('水彩風格', '轉換為淡雅的水彩畫 (Watercolor)。', '水彩。', 'style');
+  add('浮世繪', '轉換為日本浮世繪 (Ukiyo-e) 版畫風格。', '版畫。', 'style');
+  add('像素藝術', '轉換為 16-bit 像素藝術 (Pixel Art) 風格。', '像素。', 'style');
+  add('低多邊形', '轉換為 Low Poly (低多邊形) 3D 藝術風格。', '3D。', 'style');
+  add('普普藝術', '轉換為安迪沃荷風格的普普藝術 (Pop Art)。', '普普。', 'style');
+  add('美式漫畫', '轉換為美式超級英雄漫畫風格，粗線條。', '漫畫。', 'style');
+  add('日式動漫', '轉換為日本動漫 (Anime) 風格，新海誠畫風。', '動漫。', 'style');
+  add('皮克斯風格', '轉換為皮克斯 (Pixar) 3D 動畫角色風格。', '3D。', 'style');
+  add('剪紙藝術', '轉換為層次分明的剪紙藝術風格。', '工藝。', 'style');
+  add('黏土動畫', '轉換為黏土動畫 (Claymation) 質感。', '3D。', 'style');
+  add('線稿', '提取圖片的線條，製作成著色本的線稿。', '線稿。', 'style');
+  add('馬賽克', '將圖片處理成馬賽克拼貼效果。', '馬賽克。', 'style');
+  add('立體主義', '轉換為畢卡索風格的立體主義畫作。', '抽象。', 'style');
+  add('塗鴉風格', '轉換為街頭塗鴉 (Graffiti) 風格。', '街頭。', 'style');
+  add('彩色玻璃', '轉換為教堂彩色玻璃窗的效果。', '藝術。', 'style');
+  add('粉筆畫', '轉換為黑板上的粉筆畫效果。', '粉筆。', 'style');
+  add('水墨畫', '轉換為中國傳統水墨畫風格。', '水墨。', 'style');
+  add('樂高風格', '將圖片中的物體變成樂高積木拼成的樣子。', '樂高。', 'style');
+
+  // Infographic/Technical (20)
+  add('生成配色盤', '分析圖片顏色，生成含色碼的配色盤 (Color Palette)。', '配色。', 'infographic');
+  add('文字轉圖表', '（需含數據文字）將數據可視化為精美的長條圖。', '圖表。', 'infographic');
+  add('物件識別', '識別圖中主要物件，並加上標籤框 (Bounding Box)。', '識別。', 'technical');
+  add('室內設計', '將此房間轉換為北歐極簡風格裝潢。', '設計。', 'infographic');
+  add('線框圖', '將網頁截圖轉換為低保真線框圖 (Wireframe)。', 'UI/UX。', 'infographic');
+  add('熱力圖', '分析圖片的視覺焦點，生成熱力圖 (Heatmap)。', '分析。', 'technical');
+  add('邊緣檢測', '進行 Canny 邊緣檢測，顯示圖片輪廓。', '視覺。', 'technical');
+  add('深度圖', '生成這張圖片的深度圖 (Depth Map)，顯示遠近關係。', '視覺。', 'technical');
+  add('去背並加陰影', '去除背景，並為主體加上自然的投影。', '商品圖。', 'infographic');
+  add('製作貼圖', '將人物去背，加上白色描邊，做成貼圖 (Sticker)。', '貼圖。', 'infographic');
+  add('海報化', '將圖片轉換為簡約色塊的海報風格。', '設計。', 'infographic');
+  add('藍圖風格', '將圖片轉換為工程藍圖 (Blueprint) 風格。', '工程。', 'infographic');
+  add('素描線圖', '將建築照片轉換為建築師的素描線圖。', '建築。', 'infographic');
+  add('矢量化', '將圖片轉換為向量圖 (Vector) 風格，色塊清晰。', '設計。', 'infographic');
+  add('Logo 設計', '根據這張草圖，生成一個專業的 Logo。', '設計。', 'infographic');
+  add('App Icon', '將這張圖片轉換為 iOS 風格的 App Icon。', '設計。', 'infographic');
+  add('名片設計', '將這些資訊（文字圖）排版成一張名片。', '排版。', 'infographic');
+  add('雜誌封面', '將照片排版成時尚雜誌封面的樣子，加入標題。', '排版。', 'infographic');
+  add('簡報背景', '將這張圖處理成適合做 PPT 背景的淡雅圖片。', '素材。', 'infographic');
+  add('網站 Banner', '將圖片裁剪並延伸為寬螢幕的網站 Banner。', '設計。', 'infographic');
+
+  // Creative/Lighting (20)
+  add('下雪效果', '增加逼真的下雪效果。', '天氣。', 'creative');
+  add('下雨效果', '增加窗外下雨的氛圍，玻璃上有水珠。', '天氣。', 'creative');
+  add('陽光灑落', '增加丁達爾效應 (God Rays)，陽光穿過雲層或樹葉。', '光影。', 'lighting');
+  add('霓虹燈光', '增加紫紅色霓虹燈光照，營造夜店氛圍。', '光影。', 'lighting');
+  add('黃金時刻', '調整光線為日落時分的溫暖金光。', '光影。', 'lighting');
+  add('藍色時刻', '調整光線為日出前或日落後的冷藍色調。', '光影。', 'lighting');
+  add('戲劇光影', '增加強烈的明暗對比 (Chiaroscuro)，類似林布蘭光。', '光影。', 'lighting');
+  add('水下效果', '模擬水下攝影，增加藍色濾鏡和波紋光影。', '特效。', 'creative');
+  add('火焰特效', '在主體周圍增加燃燒的火焰特效。', '特效。', 'creative');
+  add('煙霧繚繞', '增加神秘的煙霧效果。', '特效。', 'creative');
+  add('雙重曝光', '將這張人像與森林圖片進行雙重曝光 (Double Exposure) 合成。', '合成。', 'creative');
+  add('微縮模型', '應用移軸鏡頭效果 (Tilt-shift)，讓場景看起來像玩具模型。', '特效。', 'creative');
+  add('鏡像翻轉', '製作水平鏡像翻轉的對稱效果。', '構圖。', 'creative');
+  add('萬花筒', '製作萬花筒般的迷幻圖案。', '特效。', 'creative');
+  add('魚眼效果', '模擬魚眼鏡頭的扭曲變形效果。', '特效。', 'creative');
+  add('動態模糊', '為背景增加動態模糊 (Motion Blur)，營造速度感。', '特效。', 'creative');
+  add('光繪效果', '在畫面中增加長曝光的光繪線條。', '特效。', 'creative');
+  add('雷射眼', '給人物加上迷因風格的雷射眼 (Laser Eyes)。', '趣味。', 'creative');
+  add('頭大身體小', '將人物變成大頭娃娃 (Bobblehead) 的比例。', '趣味。', 'creative');
+  add('隱形人', '保留衣服，將人物身體部分變透明。', '趣味。', 'creative');
+
+  // Extras (20)
+  add('修復舊照', '修復這張破損的舊照片，去除刮痕和摺痕。', '修復。', 'technical');
+  add('上色', '為這張黑白照片自動上色。', '修復。', 'technical');
+  add('去霧霾', '去除風景照中的霧霾，還原藍天。', '修復。', 'technical');
+  add('修正白平衡', '修正圖片偏黃或偏藍的色溫問題。', '修復。', 'technical');
+  add('降噪', '去除夜景照片中的噪點 (Denoise)。', '修復。', 'technical');
+  add('無損放大', '將圖片解析度放大 2 倍，並保持清晰。', '修復。', 'technical');
+  add('拉直地平線', '修正圖片傾斜的問題，拉直地平線。', '構圖。', 'editing');
+  add('三分法裁剪', '根據三分法構圖重新裁剪圖片。', '構圖。', 'editing');
+  add('居中裁剪', '將主體居中裁剪為正方形。', '構圖。', 'editing');
+  add('製作無縫紋理', '將這張圖處理成可無縫拼接的紋理 (Seamless Texture)。', '素材。', 'technical');
+  add('法線貼圖', '生成這張紋理的法線貼圖 (Normal Map)。', '3D。', 'technical');
+  add('置換貼圖', '生成這張紋理的置換貼圖 (Displacement Map)。', '3D。', 'technical');
+  add('文字雲', '將圖片轉換為由文字組成的文字雲 (Word Cloud)。', '設計。', 'creative');
+  add('ASCII Art', '將圖片轉換為 ASCII 字符畫。', '復古。', 'creative');
+  add('半色調', '增加報紙印刷的半色調 (Halftone) 網點效果。', '風格。', 'filter');
+  add('紅藍 3D', '製作紅藍立體眼鏡觀看的 3D 效果 (Anaglyph)。', '特效。', 'filter');
+  add('熱成像', '模擬熱成像儀的視覺效果。', '特效。', 'filter');
+  add('夜視鏡', '模擬綠色的夜視鏡效果。', '特效。', 'filter');
+  add('X光效果', '模擬 X 光片的視覺效果。', '特效。', 'filter');
+  add('反轉顏色', '將圖片顏色進行負片反轉 (Invert)。', '特效。', 'filter');
+
+  return prompts;
+};
+
+export const IMAGE_PROMPTS = createImagePrompts();
+
+
+// --- TXT2IMG CATEGORIES & PROMPTS ---
 
 export const TXT2IMG_CATEGORIES = [
   { id: 'all', label: '全部' },
   { id: 'photography', label: '專業攝影' },
-  { id: 'art_illustration', label: '藝術與插畫' },
-  { id: 'design', label: '設計與 3D' },
+  { id: 'art', label: '藝術繪畫' },
+  { id: '3d', label: '3D 與設計' },
   { id: 'fantasy', label: '奇幻科幻' },
-  { id: 'technical', label: '邏輯與科技' },
-  { id: 'fashion', label: '時尚與空間' }, // New
+  { id: 'anime', label: '動漫插畫' },
+  { id: 'logo', label: '標誌圖標' },
+  { id: 'interior', label: '空間建築' },
 ];
 
-export const TXT2IMG_PROMPTS: PromptTemplate[] = [
-  // --- Photography (攝影) ---
-  // Subcategory: Portrait (人像)
-  { id: 'p_portrait_1', label: '人像 | 電影質感', subcategory: '人像攝影', prompt: '特寫人像，電影質感，85mm 鏡頭，f/1.8 光圈，淺景深，林布蘭光，富有情感的眼神，高解析度皮膚紋理。', description: '大片質感。', category: 'photography' },
-  { id: 'p_portrait_2', label: '人像 | 魏斯安德森風', subcategory: '人像攝影', prompt: '魏斯安德森 (Wes Anderson) 風格人像，置中構圖，粉嫩色調，對稱美學，古怪而時尚的服裝，直視鏡頭。', description: '置中對稱。', category: 'photography' },
-  { id: 'p_portrait_3', label: '人像 | 黑色電影', subcategory: '人像攝影', prompt: '黑色電影 (Film Noir) 風格，高對比黑白攝影，百葉窗陰影投射在臉上，神秘氛圍，煙霧繚繞，偵探造型。', description: '懸疑黑白。', category: 'photography' },
-  { id: 'p_portrait_4', label: '人像 | 時尚 Vogue', subcategory: '人像攝影', prompt: 'Vogue 雜誌封面風格，前衛時尚穿搭，攝影棚燈光，純色背景，自信的姿勢，高銳利度，4k。', description: '時尚大片。', category: 'photography' },
-  { id: 'p_portrait_5', label: '人像 | 底片感', subcategory: '人像攝影', prompt: 'Kodak Portra 400 底片質感，自然光，生活感抓拍，顆粒感，漏光效果，溫暖懷舊的色調。', description: '日系底片。', category: 'photography' },
-  { id: 'p_new_1', label: '人像 | 賽博龐克', subcategory: '人像攝影', prompt: '賽博龐克風格人像，霓虹燈映照在臉上，藍紫色調，未來感服飾，雨夜背景，高反差。', description: '未來風格。', category: 'photography' },
-  { id: 'p_new_2', label: '人像 | 文藝復興', subcategory: '人像攝影', prompt: '文藝復興時期油畫光影的攝影作品，柔和的窗光 (Chiaroscuro)，優雅的姿態，古典服飾，油畫質感。', description: '古典美學。', category: 'photography' },
-  { id: 'p_new_3', label: '人像 | 雙重曝光', subcategory: '人像攝影', prompt: '藝術雙重曝光攝影，人像輪廓內填充著森林與星空的影像，夢幻，超現實主義。', description: '藝術合成。', category: 'photography' },
-  
-  // Subcategory: Landscape (風景)
-  { id: 'p_land_1', label: '風景 | 黃金時刻', subcategory: '風景攝影', prompt: '壯麗的山脈風景，黃金時刻 (Golden Hour) 柔和光線，日落餘暉，廣角鏡頭，細節豐富，史詩感。', description: '日落大景。', category: 'photography' },
-  { id: 'p_land_2', label: '風景 | 賽博都市', subcategory: '風景攝影', prompt: '未來的賽博龐克城市夜景，雨夜，霓虹燈反射在濕潤的路面，高聳的摩天大樓，飛行車，藍紫冷色調。', description: '未來城市。', category: 'photography' },
-  { id: 'p_land_3', label: '風景 | 極簡主義', subcategory: '風景攝影', prompt: '極簡主義風景攝影，茫茫雪地中的一棵枯樹，大量留白，高對比，寧靜孤寂的氛圍，黑白風格。', description: '禪意極簡。', category: 'photography' },
-  { id: 'p_land_4', label: '風景 | 無人機視角', subcategory: '風景攝影', prompt: '無人機俯瞰視角 (Drone shot)，垂直向下拍攝蜿蜒的海岸公路，海浪拍打岩石，幾何構圖，高飽和度。', description: '上帝視角。', category: 'photography' },
-  { id: 'p_land_5', label: '風景 | 迷霧森林', subcategory: '風景攝影', prompt: '清晨的迷霧森林，陽光透過樹葉灑下 (Tyndall Effect)，神秘幽靜，綠色調，長焦壓縮感。', description: '森林秘境。', category: 'photography' },
-  { id: 'p_new_4', label: '風景 | 街頭攝影', subcategory: '風景攝影', prompt: '東京澀谷街頭雨景，擁擠的人潮與雨傘，霓虹招牌倒影，電影感，寫實紀實風格。', description: '都市紀實。', category: 'photography' },
-  { id: 'p_new_5', label: '風景 | 極光夜空', subcategory: '風景攝影', prompt: '北極圈的極光夜景，綠色極光舞動在雪山之上，星空璀璨，長曝光，寧靜壯麗。', description: '自然奇觀。', category: 'photography' },
-  
-  // Subcategory: Macro & Food (微距與美食)
-  { id: 'p_macro_1', label: '微距 | 昆蟲複眼', subcategory: '微距與美食', prompt: '極致微距攝影，拍攝昆蟲的複眼細節，銳利清晰，背景虛化，色彩斑斕，微觀世界。', description: '生物細節。', category: 'photography' },
-  { id: 'p_macro_2', label: '美食 | 誘人漢堡', subcategory: '微距與美食', prompt: '商業美食攝影，多汁的牛肉漢堡，起司融化流下，新鮮生菜，水珠，頂光與背光，令人垂涎欲滴，4k。', description: '商業美食。', category: 'photography' },
-  { id: 'p_macro_3', label: '微距 | 水滴折射', subcategory: '微距與美食', prompt: '拍攝花瓣上的露珠，水滴中折射出花朵的倒影，晶瑩剔透，微距鏡頭，夢幻散景。', description: '光影折射。', category: 'photography' },
-  { id: 'p_macro_4', label: '美食 | 咖啡拉花', subcategory: '微距與美食', prompt: '俯拍一杯精緻的拿鐵拉花，旁邊放著一本書和眼鏡，早晨陽光灑落，溫馨舒適的氛圍 (Hygge)。', description: '生活情境。', category: 'photography' },
-  { id: 'p_macro_5', label: '微距 | 電路板', subcategory: '微距與美食', prompt: '主機板電路的微距特寫，金屬接點與晶片，科技藍光，景深極淺，展現精密工藝。', description: '科技質感。', category: 'photography' },
-  { id: 'p_new_6', label: '美食 | 懸浮食材', subcategory: '微距與美食', prompt: '解構美食攝影，新鮮食材（蔬菜、水果、香料）懸浮在空中，高速攝影，動態感，明亮的背景。', description: '創意美食。', category: 'photography' },
+const createTxt2ImgPrompts = () => {
+  const prompts: PromptTemplate[] = [];
+  let idCounter = 1;
+  const add = (label: string, prompt: string, desc: string, cat: any, sub: string = '') => {
+    prompts.push({ id: `p${idCounter++}`, label, prompt, description: desc, category: cat, subcategory: sub });
+  };
 
-  // --- Art & Illustration (藝術與插畫) ---
-  // Subcategory: Painting (繪畫)
-  { id: 'a_paint_1', label: '繪畫 | 印象派', subcategory: '繪畫風格', prompt: '莫內風格印象派油畫，睡蓮池塘，光影斑駁，筆觸明顯，色彩朦朧柔和，浪漫氛圍。', description: '莫內風。', category: 'art_illustration' },
-  { id: 'a_paint_2', label: '繪畫 | 浮世繪', subcategory: '繪畫風格', prompt: '日本浮世繪風格，葛飾北齋「神奈川沖浪裏」風格的海浪與富士山，線條剛勁，復古配色。', description: '浮世繪。', category: 'art_illustration' },
-  { id: 'a_paint_3', label: '繪畫 | 水彩插畫', subcategory: '繪畫風格', prompt: '清新透明的水彩插畫，雨後的街道，色彩暈染，筆觸輕盈，留白，富有詩意。', description: '透明水彩。', category: 'art_illustration' },
-  { id: 'a_paint_4', label: '繪畫 | 梵谷風', subcategory: '繪畫風格', prompt: '梵谷「星夜」風格，旋轉的星空與柏樹，厚重的油畫筆觸 (Impasto)，強烈對比色，充滿動感。', description: '後印象派。', category: 'art_illustration' },
-  { id: 'a_paint_5', label: '繪畫 | 墨水速寫', subcategory: '繪畫風格', prompt: '鋼筆淡彩速寫，歐洲古鎮街景，線條凌亂而有活力，局部上色，都市速寫 (Urban Sketching)。', description: '速寫手繪。', category: 'art_illustration' },
-  { id: 'a_new_1', label: '繪畫 | 水墨山水', subcategory: '繪畫風格', prompt: '中國傳統水墨山水畫，潑墨技法，崇山峻嶺，雲霧繚繞，意境深遠，留白藝術。', description: '東方美學。', category: 'art_illustration' },
-  { id: 'a_new_2', label: '繪畫 | 點描派', subcategory: '繪畫風格', prompt: '秀拉 (Seurat) 點描派風格，由無數彩色小點組成的公園午後場景，視覺混色效果。', description: '點描藝術。', category: 'art_illustration' },
+  // Photography (30)
+  add('人像 | 電影感', '特寫人像，電影質感，85mm 鏡頭，f/1.8 光圈，淺景深，林布蘭光，富有情感的眼神，高解析度皮膚紋理，Vogue 雜誌風格。', '大片質感。', 'photography', '人像');
+  add('人像 | 街拍', '紐約街頭時尚街拍，自然光，動態模糊的背景，穿著風衣的模特，自信的步伐，高對比度，黑白攝影。', '街頭時尚。', 'photography', '人像');
+  add('人像 | 賽博龐克', '未來感人像，霓虹燈光照射，半機械臉部細節，雨夜背景，藍紫色彩，科技感眼鏡，高科技時尚。', '科幻人像。', 'photography', '人像');
+  add('人像 | 攝影棚', '專業攝影棚燈光，純色背景，蝴蝶光，模特兒直視鏡頭，精緻妝容，時尚飾品，商業廣告級別。', '商業人像。', 'photography', '人像');
+  add('人像 | 雙重曝光', '雙重曝光藝術人像，將女性側臉輪廓與森林風景融合，夢幻氛圍，柔和色調，極簡構圖。', '藝術人像。', 'photography', '人像');
+  add('風景 | 極光', '挪威羅弗敦群島，壯麗的綠色極光，雪山倒影在湖面，星空，長曝光，廣角鏡頭，寧靜氛圍。', '自然奇觀。', 'photography', '風景');
+  add('風景 | 沙漠', '撒哈拉沙漠的日落，金色的沙丘，光影層次分明，孤獨的駱駝隊伍，溫暖色調，國家地理雜誌風格。', '壯闊景色。', 'photography', '風景');
+  add('風景 | 森林', '清晨的迷霧森林，陽光透過樹葉灑下 (God Rays)，綠意盎然，露珠，寧靜神秘，微距鏡頭拍攝苔蘚細節。', '森林秘境。', 'photography', '風景');
+  add('風景 | 海景', '波濤洶湧的大海，懸崖峭壁，燈塔，暴風雨前夕，深藍色調，戲劇性的雲層，慢快門拍攝海浪霧化效果。', '海洋力量。', 'photography', '風景');
+  add('風景 | 城市夜景', '東京澀谷十字路口夜景，車軌長曝光，霓虹廣告牌，熙攘的人群，雨後地面反射，賽博龐克氛圍。', '繁華都市。', 'photography', '風景');
+  add('動物 | 獅子', '非洲草原上的雄獅特寫，鬃毛細節清晰可見，眼神銳利，夕陽逆光，塵土飛揚，野生動物攝影。', '王者風範。', 'photography', '動物');
+  add('動物 | 貓咪', '一隻可愛的蘇格蘭折耳貓，躺在陽光下的窗台上，毛茸茸的質感，大眼睛，景深虛化背景，溫馨氛圍。', '萌寵攝影。', 'photography', '動物');
+  add('動物 | 飛鷹', '老鷹捕食瞬間，展翅高飛，利爪抓魚，水花四濺，高速快門凝固動作，震撼畫面。', '動態捕捉。', 'photography', '動物');
+  add('微距 | 露珠', '葉片上的清晨露珠特寫，晶瑩剔透，倒映出花朵，極致細節，微距鏡頭，柔和散景。', '微觀世界。', 'photography', '微距');
+  add('微距 | 眼睛', '人類虹膜的極致特寫，複雜的紋理和色彩，瞳孔反射，高解析度，神秘感。', '眼睛特寫。', 'photography', '微距');
+  add('微距 | 昆蟲', '色彩斑斕的甲蟲特寫，金屬光澤外殼，複眼細節，自然環境背景，生態攝影。', '昆蟲細節。', 'photography', '微距');
+  add('商品 | 香水', '高級香水瓶，放置在黑色大理石上，煙霧繚繞，金色背光，水珠，奢華質感，商業廣告攝影。', '質感商品。', 'photography', '商品');
+  add('商品 | 運動鞋', '懸浮的運動鞋，動態構圖，解構元素，爆炸圖效果，色彩鮮豔的背景，潮流風格。', '潮流商品。', 'photography', '商品');
+  add('商品 | 美食', '令人垂涎欲滴的漢堡，起司流下，新鮮生菜，水珠，深色木桌背景，暖色調燈光，美食攝影。', '美食誘惑。', 'photography', '商品');
+  add('建築 | 現代', '札哈·哈蒂風格的流線型建築，白色混凝土，藍天背景，幾何構圖，極簡主義，光影對比。', '現代建築。', 'photography', '建築');
+  add('建築 | 古典', '哥德式大教堂內部，彩色玻璃窗，高聳的拱頂，光束射入，莊嚴肅穆，對稱構圖。', '歷史建築。', 'photography', '建築');
+  add('街頭 | 黑白', '雨中的倫敦街頭，撐傘的行人，路面反光，高對比度黑白攝影，孤獨感，敘事性。', '街頭人文。', 'photography', '街頭');
+  add('街頭 | 色彩', '古巴哈瓦那街頭，色彩斑斕的老爺車，剝落的牆壁，陽光，當地居民，充滿活力。', '異國風情。', 'photography', '街頭');
+  add('航空 | 戰機', 'F-22 戰鬥機在雲層中穿梭，音爆雲，夕陽背景，空對空攝影，金屬質感，速度感。', '軍事攝影。', 'photography', '航空');
+  add('水下 | 珊瑚', '大堡礁多彩的珊瑚礁，熱帶魚群，清澈蔚藍的海水，陽光透入水下，廣角鏡頭。', '海底世界。', 'photography', '水下');
+  add('天文 | 銀河', '拱形銀河橫跨沙漠岩石，繁星點點，無光害夜空，天文攝影，壯麗宇宙。', '星空攝影。', 'photography', '天文');
+  add('運動 | 籃球', '籃球員扣籃瞬間，肌肉線條，汗水，球場燈光，觀眾模糊背景，充滿爆發力。', '運動瞬間。', 'photography', '運動');
+  add('時尚 | 雜誌', 'Vogue 風格時尚大片，模特穿著高定禮服，在廢墟中拍攝，強烈對比，戲劇性姿勢。', '時尚大片。', 'photography', '時尚');
+  add('黑白 | 肖像', '飽經風霜的老人肖像，深刻的皺紋，眼神有故事，黑白高對比，強調質感。', '靈魂肖像。', 'photography', '黑白');
+  add('無人機 | 俯瞰', '俯瞰蜿蜒的海岸公路，海浪拍打礁石，綠色山脈，上帝視角，對角線構圖。', '航拍視角。', 'photography', '風景');
 
-  // Subcategory: Anime & Comic (動漫與漫畫)
-  { id: 'a_anime_1', label: '動漫 | 吉卜力', subcategory: '動漫風格', prompt: '吉卜力工作室風格，宮崎駿畫風，綠意盎然的夏日鄉村，藍天白雲，細節豐富的背景，治癒系。', description: '宮崎駿風。', category: 'art_illustration' },
-  { id: 'a_anime_2', label: '動漫 | 賽博龐克', subcategory: '動漫風格', prompt: '攻殼機動隊風格，90 年代賽博龐克動畫，高科技義肢少女，霓虹城市背景，Cel Shading，復古動畫質感。', description: '經典賽博。', category: 'art_illustration' },
-  { id: 'a_anime_3', label: '漫畫 | 美漫英雄', subcategory: '動漫風格', prompt: '經典美式超級英雄漫畫封面，粗獷的墨線，強烈的動態姿勢，Ben-Day 網點效果，誇張的肌肉線條。', description: '美漫風格。', category: 'art_illustration' },
-  { id: 'a_anime_4', label: '動漫 | 新海誠', subcategory: '動漫風格', prompt: '新海誠風格，極致唯美的光影，璀璨的星空與流星，精細的都市背景，高飽和度，每一幀都是桌布。', description: '光影壁紙。', category: 'art_illustration' },
-  { id: 'a_anime_5', label: '漫畫 | 恐怖伊藤', subcategory: '動漫風格', prompt: '伊藤潤二風格恐怖漫畫，黑白線條，詭異的螺旋圖案，驚悚的表情，陰鬱壓抑的氛圍。', description: '日式恐怖。', category: 'art_illustration' },
-  { id: 'a_new_3', label: '漫畫 | 法式漫畫', subcategory: '動漫風格', prompt: '墨必斯 (Moebius) 風格，法式科幻漫畫，精細的線條，淡雅的色彩，奇幻的異星風景，超現實感。', description: '歐美漫畫。', category: 'art_illustration' },
-  { id: 'a_new_4', label: '動漫 | 像素藝術', subcategory: '動漫風格', prompt: '16-bit 像素藝術 (Pixel Art)，復古 RPG 遊戲場景，冒險者在營火旁休息，細節豐富。', description: '懷舊遊戲。', category: 'art_illustration' },
+  // Art (20)
+  add('水彩 | 貓', '一隻睡覺的貓，水彩畫風格，柔和的暈染，淡雅的色彩，留白，溫馨療癒。', '手繪感。', 'art', '水彩');
+  add('水彩 | 城市', '雨中的巴黎街道，水彩畫，濕漉漉的路面反射，模糊的行人，埃菲爾鐵塔遠景，浪漫氛圍。', '城市寫生。', 'art', '水彩');
+  add('油畫 | 星空', '梵谷《星夜》風格的風景畫，旋轉的星空，厚重的筆觸，鮮豔的黃藍對比，表現主義。', '印象派。', 'art', '油畫');
+  add('油畫 | 肖像', '文藝復興風格的貴族肖像，精細的服飾細節，柔和的光線 (Sfumato)，蒙娜麗莎般的微笑。', '古典油畫。', 'art', '油畫');
+  add('素描 | 建築', '精細的哥德式教堂鉛筆素描，線條流暢，陰影層次豐富，建築細節，速寫風格。', '鉛筆畫。', 'art', '素描');
+  add('浮世繪 | 海浪', '葛飾北齋風格的海浪，巨浪滔天，富士山遠景，復古日本版畫色彩，線條剛勁。', '日本藝術。', 'art', '浮世繪');
+  add('普普藝術 | 瑪麗蓮', '安迪沃荷風格的瑪麗蓮夢露，重複的頭像，高飽和度色彩，絲網印刷質感，波普藝術。', '現代藝術。', 'art', '普普');
+  add('水墨 | 山水', '中國傳統山水畫，潑墨技法，雲霧繚繞的黃山，孤松，留白意境，黑白水墨。', '東方藝術。', 'art', '水墨');
+  add('插畫 | 兒童', '可愛的繪本插畫，森林裡的動物派對，粉蠟筆質感，溫暖色調，充滿童趣。', '童書插畫。', 'art', '插畫');
+  add('插畫 | 扁平', '現代扁平化風格插畫 (Flat Art)，辦公室場景，幾何圖形，鮮豔配色，UI 設計插圖。', '扁平設計。', 'art', '插畫');
+  add('像素 | 城市', '賽博龐克城市的像素藝術 (Pixel Art)，霓虹燈，雨夜，16-bit 復古遊戲風格，細節豐富。', '像素風。', 'art', '像素');
+  add('剪紙 | 森林', '層次分明的剪紙藝術，深邃的森林，光影效果，紙張紋理，立體感。', '工藝美術。', 'art', '工藝');
+  add('塗鴉 | 街頭', '紐約地鐵站的塗鴉藝術，色彩鮮豔，嘻哈風格，噴漆質感，街頭文化。', '街頭藝術。', 'art', '塗鴉');
+  add('超現實 | 夢境', '達利風格的超現實主義畫作，融化的時鐘，長腳大象，荒誕的夢境，沙漠背景。', '超現實。', 'art', '超現實');
+  add('新藝術 | 慕夏', '慕夏風格的女神插畫，繁複的裝飾邊框，花卉元素，優美的線條，淡雅色彩。', '慕夏風。', 'art', '新藝術');
+  add('Low Poly | 動物', '低多邊形風格的狐狸，幾何切面，鮮豔色彩，漸層背景，3D 藝術。', '幾何藝術。', 'art', '3D');
+  add('粉筆畫 | 黑板', '黑板上的粉筆畫，精美的咖啡店菜單設計，手寫字體，粉筆質感。', '手繪。', 'art', '粉筆');
+  add('彩色玻璃 | 窗', '教堂彩色玻璃窗花，陽光透過，五彩斑斕的光影，宗教圖案，神聖感。', '玻璃藝術。', 'art', '工藝');
+  add('抽象 | 幾何', '康定斯基風格的抽象畫，幾何圖形，線條，鮮豔色彩的碰撞，音樂感。', '抽象派。', 'art', '抽象');
+  add('拼貼 | 復古', '復古達達主義拼貼畫，舊報紙，黑白照片，撕裂邊緣，荒誕組合。', '拼貼藝術。', 'art', '拼貼');
 
-  // --- Design & 3D (設計與 3D) ---
-  // Subcategory: 3D Render (3D 渲染)
-  { id: 'd_3d_1', label: '3D | 盲盒公仔', subcategory: '3D 渲染', prompt: '3D 盲盒公仔設計，可愛的太空人角色，Chibi 風格，OC 渲染 (Octane Render)，塑膠與霧面質感，柔光攝影棚。', description: '可愛公仔。', category: 'design' },
-  { id: 'd_3d_2', label: '3D | 玻璃擬態', subcategory: '3D 渲染', prompt: '玻璃擬態 (Glassmorphism) 圖示設計，半透明磨砂玻璃質感，多彩漸層背景，懸浮感，現代 UI 風格。', description: 'UI 趨勢。', category: 'design' },
-  { id: 'd_3d_3', label: '3D | 等距視角', subcategory: '3D 渲染', prompt: '低多邊形 (Low Poly) 等距視角 (Isometric) 房間，溫馨的遊戲玩家臥室，充滿細節，柔和暖光，Blender 渲染。', description: '小房間。', category: 'design' },
-  { id: 'd_3d_4', label: '3D | 超寫實產品', subcategory: '3D 渲染', prompt: '高級香水瓶的產品渲染，金屬與玻璃質感，水花濺起的高速攝影效果，廣告級別光影，KeyShot 渲染。', description: '產品設計。', category: 'design' },
-  { id: 'd_3d_5', label: '3D | 黏土定格', subcategory: '3D 渲染', prompt: '黏土定格動畫風格 (Claymation)，橡皮泥質感，指紋痕跡，手工製作的感覺，可愛的動物角色，微距。', description: '阿德曼風。', category: 'design' },
-  { id: 'd_new_1', label: '3D | 遊戲資產', subcategory: '3D 渲染', prompt: '遊戲道具設計，一把傳說級的魔法水晶劍，發光特效，PBR 材質，Unreal Engine 5 渲染，細節展示。', description: '遊戲道具。', category: 'design' },
-  { id: 'd_new_2', label: '3D | 抽象流體', subcategory: '3D 渲染', prompt: '抽象的彩色流體模擬，絲綢般的質感，漸層色彩，在空中流動，極簡主義背景，藝術感。', description: '抽象藝術。', category: 'design' },
+  // 3D/Design (20)
+  add('3D | 角色', '皮克斯風格的 3D 卡通角色，大眼睛，毛茸茸的怪獸，鮮豔色彩，Octane render，影視級打光。', '卡通角色。', '3D', '角色');
+  add('3D | 房間', '等角視圖 (Isometric) 的遊戲玩家房間，RGB 燈光，多螢幕，細節豐富，C4D 渲染，可愛風格。', '小場景。', '3D', '場景');
+  add('3D | 抽象', '流體玻璃球體，彩色液體，折射光線，極簡背景，高質感 3D 渲染，抽象藝術。', '材質渲染。', '3D', '抽象');
+  add('3D | 汽車', '未來概念跑車，流線型設計，金屬光澤，在濕潤的瀝青路面上，霓虹燈反射，Unreal Engine 5。', '硬表面。', '3D', '載具');
+  add('3D | 食物', '超寫實的 3D 美食渲染，多汁的漢堡，水珠，熱氣，微距視角，誘人食慾。', '食物渲染。', '3D', '食物');
+  add('UI | APP', '旅遊 App 的首頁介面設計，玻璃擬態 (Glassmorphism)，卡片式佈局，清新藍色調，高品質 UI/UX。', '介面設計。', '3D', 'UI');
+  add('Logo | 咖啡', '極簡咖啡店 Logo，結合咖啡豆和山脈元素，向量線條，黑白配色，現代風格。', '標誌設計。', '3D', 'Logo');
+  add('Logo | 科技', '科技公司 Logo，字母 "A" 的抽象幾何變形，藍色漸層，現代感，簡約有力。', '標誌設計。', '3D', 'Logo');
+  add('Icon | 3D', '一套 3D 立體圖標，雲朵、閃電、太陽，磨砂玻璃材質，柔和配色，可愛風格。', '圖標設計。', '3D', 'Icon');
+  add('包裝 | 飲料', '果汁飲料包裝設計，清新水果插畫，鮮豔色彩，現代字體，樣機展示 (Mockup)。', '包裝設計。', '3D', '包裝');
+  add('海報 | 音樂節', '電子音樂節海報，故障藝術風格，霓虹色彩，抽象波形，大膽的排版。', '海報設計。', '3D', '平面');
+  add('字體 | 3D', '充氣氣球質感的 "HELLO" 3D 字體，粉紅色，光澤感，漂浮在空中，C4D。', '字體設計。', '3D', '字體');
+  add('室內 | 北歐', '北歐極簡風格客廳，白色色調，木質地板，綠色植物，自然光，舒適氛圍，建築渲染。', '室內設計。', '3D', '室內');
+  add('室內 | 工業', '工業風 Loft 公寓，裸露磚牆，金屬管線，皮革沙發，暖色燈光，復古質感。', '室內設計。', '3D', '室內');
+  add('建築 | 未來', '未來生態城市，垂直花園建築，飛行汽車，綠色能源，烏托邦，3D 概念圖。', '建築設計。', '3D', '建築');
+  add('公仔 | 潮玩', '潮流玩具公仔設計 (Blind Box style)，戴著耳機的酷男孩，街頭服飾，塑膠材質，棚拍燈光。', '玩具設計。', '3D', '角色');
+  add('珠寶 | 戒指', '鑽石戒指 3D 渲染，精緻切工，火彩閃耀，絲絨背景，高貴奢華。', '產品渲染。', '3D', '產品');
+  add('產品 | 耳機', '無線耳機產品圖，懸浮展示，爆炸圖結構，簡約背景，科技感，工業設計。', '產品設計。', '3D', '產品');
+  add('紋理 | 木紋', '高品質無縫深色橡木紋理，真實凹凸質感，4K 解析度。', '材質貼圖。', '3D', '材質');
+  add('展場 | 設計', '現代藝術展覽空間設計，白色牆面，聚光燈，極簡主義，沈浸式體驗。', '空間設計。', '3D', '室內');
 
-  // Subcategory: Graphic Design (平面設計)
-  { id: 'd_graphic_1', label: '設計 | 極簡 Logo', subcategory: '平面設計', prompt: '極簡主義 Logo 設計，以「狐狸」為主題，幾何線條，向量圖形，扁平化設計 (Flat Design)，橘色與白色。', description: '商標設計。', category: 'design' },
-  { id: 'd_graphic_2', label: '設計 | 包裝設計', subcategory: '平面設計', prompt: '精緻的茶葉包裝設計，東方禪意風格，燙金工藝，宣紙質感，優雅的書法字體，展示樣機 (Mockup)。', description: '包裝樣機。', category: 'design' },
-  { id: 'd_graphic_3', label: '設計 | 霓虹海報', subcategory: '平面設計', prompt: '復古 80 年代 Synthwave 音樂節海報，落日網格，棕櫚樹剪影，霓虹字體，VHS 雜訊效果。', description: '復古海報。', category: 'design' },
-  { id: 'd_graphic_4', label: '設計 | 幾何圖形', subcategory: '平面設計', prompt: '包浩斯 (Bauhaus) 風格幾何海報，紅黃藍三原色，圓形三角形方形的構成，理性與秩序感。', description: '包浩斯。', category: 'design' },
-  { id: 'd_graphic_5', label: '設計 | 貼紙藝術', subcategory: '平面設計', prompt: '街頭潮流風格貼紙設計，塗鴉字體，滑板文化，鮮豔色彩，粗輪廓線 (Bold Outline)，向量圖。', description: '潮流貼紙。', category: 'design' },
-  { id: 'd_new_3', label: '設計 | App UI', subcategory: '平面設計', prompt: '現代化旅遊 App 的 UI 介面設計，首頁畫面，清晰的卡片式佈局，高品質風景圖，極簡導航列，Dribbble 風格。', description: 'UI 介面。', category: 'design' },
-  { id: 'd_new_4', label: '設計 | 塔羅牌', subcategory: '平面設計', prompt: '新藝術風格 (Art Nouveau) 的塔羅牌設計，「月亮」牌面，繁複的邊框裝飾，慕夏風格，神秘優雅。', description: '卡牌插畫。', category: 'design' },
+  // Fantasy/Sci-Fi (20)
+  add('奇幻 | 巨龍', '史詩般的奇幻場景，一條巨大的噴火龍盤踞在古老城堡上，烏雲密佈，閃電，騎士對決。', '史詩生物。', 'fantasy', '奇幻');
+  add('奇幻 | 森林', '發光的魔法森林，巨大的蘑菇，飛舞的精靈，紫色調，夢幻氛圍，阿凡達風格。', '奇幻場景。', 'fantasy', '奇幻');
+  add('科幻 | 城市', '賽博龐克未來城市，高聳入雲的摩天大樓，全息廣告，飛行車流，雨夜霓虹，銀翼殺手風格。', '未來都市。', 'fantasy', '科幻');
+  add('科幻 | 太空', '巨大的太空站軌道，地球背景，星際飛船對戰，雷射光束，爆炸，史詩級太空歌劇。', '太空戰場。', 'fantasy', '科幻');
+  add('怪物 | 克蘇魯', '深海中的克蘇魯怪物，巨大的觸手，古老遺跡，陰暗壓抑，恐怖氛圍，Lovecraft 風格。', '恐怖生物。', 'fantasy', '怪物');
+  add('角色 | 戰士', '身穿發光符文盔甲的聖騎士，手持巨劍，站在雪山之巔，眼神堅毅，奇幻角色設計。', '奇幻角色。', 'fantasy', '角色');
+  add('角色 | 機器人', '破舊的戰鬥機器人，生鏽金屬質感，發光的紅眼，廢土背景，末日風格。', '機械角色。', 'fantasy', '角色');
+  add('場景 | 廢土', '後末日廢土世界，荒廢的城市，雜草叢生，夕陽餘暉，孤獨的倖存者，最後生還者風格。', '末日場景。', 'fantasy', '場景');
+  add('魔法 | 施法', '魔法師施放強大的火焰魔法，魔法陣光效，粒子特效，震撼的視覺衝擊。', '魔法特效。', 'fantasy', '魔法');
+  add('異世界 | 浮島', '漂浮在空中的島嶼，瀑布流下雲層，奇異的植被，飛龍翱翔，幻想世界。', '奇幻風景。', 'fantasy', '場景');
+  add('蒸氣龐克', '維多利亞時代的蒸氣龐克城市，齒輪機械，飛艇，黃銅色調，復古科幻。', '蒸氣龐克。', 'fantasy', '科幻');
+  add('外星人', '灰皮膚的大眼外星人，高科技實驗室背景，神秘氛圍，X檔案風格。', '外星生物。', 'fantasy', '科幻');
+  add('殭屍潮', '成群結隊的殭屍在街道上奔跑，破敗的車輛，煙霧，恐怖電影場景，動態模糊。', '恐怖場景。', 'fantasy', '恐怖');
+  add('神話 | 希臘', '奧林帕斯山上的宙斯，手持雷電，希臘神廟，雲海，神聖莊嚴。', '神話傳說。', 'fantasy', '神話');
+  add('神話 | 東方', '雲霧中的東方神龍，鱗片閃耀，祥雲繚繞，傳統中國神話風格。', '神話傳說。', 'fantasy', '神話');
+  add('賽博 | 藝伎', '機械藝伎，傳統和服與機械零件的結合，霓虹燈背景，攻殼機動隊風格。', '賽博角色。', 'fantasy', '科幻');
+  add('微觀 | 文明', '生活在蘑菇上的微型小人國文明，微距攝影視角，可愛且充滿細節。', '微觀奇幻。', 'fantasy', '奇幻');
+  add('傳送門', '神秘的發光傳送門，通往另一個維度，能量漩渦，周圍空間扭曲。', '科幻概念。', 'fantasy', '科幻');
+  add('水晶洞穴', '巨大的地下水晶洞穴，發光的晶體照亮黑暗，探險家，神秘壯觀。', '探險場景。', 'fantasy', '場景');
+  add('機甲', '巨型戰鬥機甲 (Mecha) 站在城市廢墟中，戰損細節，夕陽剪影，鋼彈風格。', '機甲風格。', 'fantasy', '科幻');
 
-  // Subcategory: Fashion & Space (時尚與空間)
-  { id: 'fs_1', label: '時尚 | 伸展台', subcategory: '時尚設計', prompt: '巴黎時裝週伸展台，模特兒穿著前衛的解構主義服裝，誇張的剪裁，黑白色調，聚光燈。', description: '時裝設計。', category: 'fashion' },
-  { id: 'fs_2', label: '時尚 | 運動鞋', subcategory: '時尚設計', prompt: '潮牌運動鞋設計概念圖，未來感流線型，異材質拼接，鮮豔配色，懸浮展示。', description: '鞋類設計。', category: 'fashion' },
-  { id: 'fs_3', label: '時尚 | 珠寶設計', subcategory: '時尚設計', prompt: '高級珠寶設計手繪稿，鑽石項鍊，細膩的鉛筆線條與水彩上色，標註寶石規格。', description: '珠寶草圖。', category: 'fashion' },
-  { id: 'fs_4', label: '空間 | 北歐風', subcategory: '室內設計', prompt: '明亮通透的北歐風客廳，淺色木地板，灰色布沙發，綠色植栽，大片落地窗，自然光。', description: '居家裝潢。', category: 'fashion' },
-  { id: 'fs_5', label: '空間 | 工業風', subcategory: '室內設計', prompt: 'Loft 工業風辦公室，紅磚牆，外露管線，黑色鐵件家具，愛迪生燈泡，復古皮革沙發。', description: '商業空間。', category: 'fashion' },
-  { id: 'fs_6', label: '空間 | 日式庭園', subcategory: '室內設計', prompt: '寧靜的日式枯山水庭園，白沙波紋，青苔石頭，竹林背景，禪意氛圍。', description: '景觀設計。', category: 'fashion' },
+  // Anime (15)
+  add('動漫 | 少女', '可愛的動漫少女，粉色長髮，水手服，櫻花樹下，陽光斑駁，京都動畫風格。', '美少女。', 'anime', '角色');
+  add('動漫 | 戰鬥', '熱血動漫戰鬥場面，劍氣特效，動態模糊，強烈透視，少年漫畫風格。', '動作場面。', 'anime', '戰鬥');
+  add('動漫 | 風景', '新海誠風格的城市風景，逼真的雲朵，絢麗的夕陽，電車經過，細膩的光影。', '唯美背景。', 'anime', '風景');
+  add('動漫 | 賽博', '賽博龐克風格的動漫少女，機械手臂，霓虹護目鏡，未來城市夜景。', '科幻動漫。', 'anime', '科幻');
+  add('動漫 | 吉卜力', '吉卜力工作室風格，綠色草原，藍天白雲，飛行器，手繪質感，治癒系。', '吉卜力。', 'anime', '風格');
+  add('動漫 | 復古', '90 年代賽璐珞風格動漫 (Retro Anime)，低解析度質感，鮮豔色彩，懷舊氛圍。', '復古動漫。', 'anime', '復古');
+  add('動漫 | Q版', 'Q 版動漫角色 (Chibi)，大頭小身體，可愛表情，簡約背景，貼圖風格。', 'Q版。', 'anime', 'Q版');
+  add('動漫 | 機甲', '動漫風格的機甲駕駛艙視角，複雜的儀表盤，全息屏幕，駕駛員特寫。', '機甲。', 'anime', '科幻');
+  add('動漫 | 魔法', '魔法少女變身瞬間，絢麗的光帶，絲帶飛舞，閃亮特效，華麗風格。', '魔法少女。', 'anime', '魔法');
+  add('動漫 | 學園', '日式學園祭場景，熱鬧的攤位，穿著制服的學生，夕陽，青春氛圍。', '校園生活。', 'anime', '日常');
+  add('動漫 | 偶像', '虛擬偶像演唱會，舞台燈光，螢光棒海洋，華麗演出服，閃亮動人。', '偶像活動。', 'anime', '偶像');
+  add('動漫 | 武士', '落魄武士，站在蘆葦蕩中，手按武士刀，風吹過，黑白水墨動漫風格。', '武士道。', 'anime', '古風');
+  add('動漫 | 妖怪', '百鬼夜行場景，各種日本妖怪，浮世繪風格動漫，詭異而華麗。', '妖怪。', 'anime', '奇幻');
+  add('動漫 | 美食', '動漫風格的拉麵特寫，熱氣騰騰，誘人的色澤，宮崎駿美食風格。', '動漫美食。', 'anime', '美食');
+  add('動漫 | 眼神', '動漫角色眼神特寫，瞳孔中的星光，流淚，情感強烈，高解析度。', '特寫。', 'anime', '特寫');
 
-  // --- Fantasy & Sci-Fi (奇幻與科幻) ---
-  // Subcategory: Fantasy (奇幻)
-  { id: 'f_fantasy_1', label: '奇幻 | 史詩巨龍', subcategory: '奇幻世界', prompt: '史詩般的奇幻場景，巨龍盤踞在古老城堡的塔樓上，噴吐火焰，騎士對決，戲劇性光影，魔戒風格。', description: 'D&D 風格。', category: 'fantasy' },
-  { id: 'f_fantasy_2', label: '奇幻 | 精靈森林', subcategory: '奇幻世界', prompt: '魔法精靈森林，發光的植物與蘑菇，飛舞的螢火蟲，空靈的氛圍，夢幻紫色調，Unreal Engine 5。', description: '魔法秘境。', category: 'fantasy' },
-  { id: 'f_fantasy_3', label: '奇幻 | 蒸汽龐克', subcategory: '奇幻世界', prompt: '蒸汽龐克飛船，黃銅齒輪與蒸汽管道，維多利亞風格的城市，雲海之上，冒險氛圍。', description: '機械美學。', category: 'fantasy' },
-  { id: 'f_fantasy_4', label: '奇幻 | 克蘇魯', subcategory: '奇幻世界', prompt: '克蘇魯神話風格，深海中的不可名狀之物，觸手，古老遺跡，陰暗壓抑，Lovecraftian horror。', description: '宇宙恐怖。', category: 'fantasy' },
-  { id: 'f_fantasy_5', label: '奇幻 | 塔羅牌', subcategory: '奇幻世界', prompt: '精美的塔羅牌插畫，「命運之輪」牌面，新藝術風格 (Art Nouveau)，繁複的裝飾邊框，神秘學符號。', description: '卡牌插畫。', category: 'fantasy' },
+  // Interior/Architecture (15)
+  add('室內 | 極簡', '極簡主義臥室，白色與原木色，低矮床架，隱藏式收納，寧靜氛圍。', '極簡風。', 'interior', '臥室');
+  add('室內 | 奢華', '奢華巴洛克風格客廳，水晶吊燈，絲絨家具，金箔裝飾，大理石地板。', '奢華風。', 'interior', '客廳');
+  add('室內 | 日式', '傳統日式和室，榻榻米，紙拉門 (Shoji)，盆景，茶道器具，禪意空間。', '日式風。', 'interior', '和室');
+  add('室內 | 波西米亞', '波西米亞風格陽台，編織掛毯，大量植物，圖騰地毯，串燈，慵懶氛圍。', '波西米亞。', 'interior', '陽台');
+  add('室內 | 廚房', '現代開放式廚房，中島吧台，嵌入式家電，大理石檯面，深藍色櫥櫃，明亮通透。', '現代廚房。', 'interior', '廚房');
+  add('建築 | 摩天樓', '未來派摩天大樓，扭曲的玻璃幕牆，空中花園，雲端之上，科幻建築。', '未來建築。', 'interior', '外觀');
+  add('建築 | 別墅', '懸崖上的現代海景別墅，無邊際泳池，落地窗，夕陽，度假氛圍，建築攝影。', '豪宅。', 'interior', '外觀');
+  add('建築 | 小屋', '森林深處的童話小木屋，煙囪冒煙，溫暖的燈光，雪景，溫馨避世。', '小木屋。', 'interior', '外觀');
+  add('建築 | 博物館', '現代美術館內部，極簡混凝土牆，天窗採光，光影幾何，孤獨的觀展者。', '公共空間。', 'interior', '室內');
+  add('建築 | 圖書館', '宏偉的古典圖書館，高聳的書架，螺旋樓梯，復古檯燈，學術氛圍，哈利波特風格。', '圖書館。', 'interior', '室內');
+  add('室內 | 浴室', '熱帶雨林風格浴室，半戶外設計，石材浴缸，周圍是綠色植物，自然光。', '度假風。', 'interior', '浴室');
+  add('室內 | 辦公室', 'Google 風格的創意辦公室，色彩繽紛，開放協作區，懶骨頭，溜滑梯。', '辦公空間。', 'interior', '辦公');
+  add('室內 | 咖啡廳', '工業風咖啡廳，紅磚牆，愛迪生燈泡，深色木桌，拉花咖啡，文青氛圍。', '商業空間。', 'interior', '商業');
+  add('建築 | 樹屋', '夢幻樹屋，建在巨大的古樹上，吊橋，燈籠，精靈風格。', '奇幻建築。', 'interior', '外觀');
+  add('建築 | 溫室', '維多利亞風格玻璃溫室，種滿奇花異草，陽光透過玻璃，精緻的鐵藝結構。', '花園建築。', 'interior', '外觀');
 
-  // Subcategory: Sci-Fi (科幻)
-  { id: 'f_scifi_1', label: '科幻 | 太空歌劇', subcategory: '科幻未來', prompt: '壯觀的太空艦隊戰役，雷射光束交錯，巨大的母艦，星雲背景，星際大戰風格，電影級特效。', description: '星際大戰。', category: 'fantasy' },
-  { id: 'f_scifi_2', label: '科幻 | 廢土風格', subcategory: '科幻未來', prompt: '末日後的廢土世界，荒涼的沙漠，廢棄的生鏽機器人，孤獨的倖存者，瘋狂麥斯 (Mad Max) 風格。', description: '末日生存。', category: 'fantasy' },
-  { id: 'f_scifi_3', label: '科幻 | 生化人', subcategory: '科幻未來', prompt: '半人半機械的生化人 (Cyborg) 特寫，露出的電路與金屬骨骼，發光的眼睛，未來科技感，超寫實。', description: '人機融合。', category: 'fantasy' },
-  { id: 'f_scifi_4', label: '科幻 | 戴森球', subcategory: '科幻未來', prompt: '巨大的戴森球結構包圍恆星，宏偉的太空工程，細節豐富的太陽能板陣列，硬科幻風格 (Hard Sci-Fi)。', description: '巨型結構。', category: 'fantasy' },
-  { id: 'f_scifi_5', label: '科幻 | 傳送門', subcategory: '科幻未來', prompt: '開啟的時空傳送門，旋轉的能量渦流，通往異世界的景象，實驗室背景，藍色與橙色對比。', description: '時空旅行。', category: 'fantasy' },
+  return prompts;
+};
 
-  // --- Logic & Technical (邏輯與科技) ---
-  { id: 'tech_vis_1', label: '邏輯 | 系統架構', subcategory: '概念視覺化', prompt: '現代化雲端微服務架構圖，3D 等距視角，伺服器叢集，資料庫與 API Gateway 圖示，科技藍光，連接線與資料流。', description: '架構圖。', category: 'technical' },
-  { id: 'tech_vis_2', label: '邏輯 | 神經網絡', subcategory: '概念視覺化', prompt: '抽象的神經網絡可視化，發光的節點與突觸連接，複雜的網絡結構，深色背景，象徵人工智慧與深度學習。', description: 'AI 概念。', category: 'technical' },
-  { id: 'tech_vis_3', label: '邏輯 | 區塊鏈', subcategory: '概念視覺化', prompt: '區塊鏈概念圖，數位方塊鏈條，加密鎖，分散式網絡節點，金色與藍色，象徵安全與去中心化。', description: '加密技術。', category: 'technical' },
-  { id: 'tech_vis_4', label: '邏輯 | 數據流', subcategory: '概念視覺化', prompt: '大數據流動的視覺化表現，光纖傳輸，二進位代碼雨 (Matrix style)，資訊高速公路，動感模糊。', description: '資訊流。', category: 'technical' },
-  { id: 'tech_vis_5', label: '邏輯 | 量子運算', subcategory: '概念視覺化', prompt: '量子電腦晶片特寫，超導體迴路，極低溫冷卻管，充滿未來感的金色與銅色金屬質感，實驗室環境。', description: '量子科技。', category: 'technical' },
-  { id: 'tech_vis_6', label: '邏輯 | 心智圖', subcategory: '概念視覺化', prompt: '複雜而精美的心智圖 (Mind Map) 插畫，從中心大腦發散出的創意樹狀圖，豐富的圖標與關鍵字，彩色鉛筆風格。', description: '思維擴散。', category: 'technical' },
-  { id: 'tech_vis_7', label: '邏輯 | 駭客任務', subcategory: '概念視覺化', prompt: '駭客任務風格的綠色代碼瀑布，黑色背景，數位雨，神秘且具有科技感的氛圍。', description: '代碼雨。', category: 'technical' },
-  { id: 'tech_vis_8', label: '邏輯 | 虛擬實境', subcategory: '概念視覺化', prompt: '戴著 VR 頭顯的人，周圍漂浮著虛擬介面與全息投影，虛實結合的視覺效果，元宇宙概念。', description: 'VR/AR。', category: 'technical' },
-  { id: 'tech_vis_9', label: '邏輯 | 生物科技', subcategory: '概念視覺化', prompt: 'DNA 雙螺旋結構的 3D 渲染，發光的鹼基對，漂浮在微觀細胞環境中，醫療科技感，藍綠色調。', description: '基因工程。', category: 'technical' },
-  { id: 'tech_vis_10', label: '邏輯 | 智慧城市', subcategory: '概念視覺化', prompt: '未來的智慧城市模型，物聯網連接線，無人機物流，綠能建築，數據儀表板覆蓋在城市上空。', description: 'IoT 城市。', category: 'technical' },
-  { id: 'tech_vis_11', label: '邏輯 | 網路安全', subcategory: '概念視覺化', prompt: '網路安全盾牌概念圖，數位防護罩抵擋紅色病毒攻擊，電路板背景，象徵資安防禦。', description: '資安防護。', category: 'technical' },
-  { id: 'tech_vis_12', label: '邏輯 | 自動化', subcategory: '概念視覺化', prompt: '工業 4.0 自動化生產線，機械手臂精密組裝，傳送帶，乾淨明亮的智慧工廠，橙色與灰色配色。', description: '工業 4.0。', category: 'technical' },
-];
+export const TXT2IMG_PROMPTS = createTxt2ImgPrompts();
 
 // --- IMG2TXT CATEGORIES & PROMPTS ---
 
@@ -432,154 +566,286 @@ export const IMG2TXT_CATEGORIES = [
   { id: 'convert', label: '轉換與解題' },
   { id: 'object', label: '物品與人物' },
   { id: 'creative', label: '創意編劇' },
+  { id: 'coding', label: '代碼生成' },
 ];
 
-export const IMG2TXT_PROMPTS: PromptTemplate[] = [
-  // Caption (描述)
-  { id: 'it_cap_1', label: '詳細描述', prompt: '請非常詳細地描述這張圖片的內容，包括場景、人物、動作、物體、顏色、光線和氛圍。', description: '視覺轉文字。', category: 'caption' },
-  { id: 'it_cap_2', label: 'IG 貼文文案', prompt: '請根據這張圖片撰寫一篇吸引人的 Instagram 貼文，包含適當的 Emoji 和 Hashtags，語氣要活潑有趣。', description: '社群行銷。', category: 'caption' },
-  { id: 'it_cap_3', label: '無障礙描述 (Alt Text)', prompt: '請為這張圖片撰寫一段簡潔準確的 Alt Text (替代文字)，供視障人士使用螢幕閱讀器時理解圖片內容。', description: '無障礙輔助。', category: 'caption' },
-  { id: 'it_cap_4', label: '藝術鑑賞', prompt: '假設你是一位藝術評論家，請分析這幅畫作的構圖、色彩運用、筆觸技巧以及它所傳達的情感與意境。', description: '專業藝評。', category: 'caption' },
-  { id: 'it_cap_5', label: '室內設計建議', prompt: '分析這張室內照片的裝潢風格，並提出 3 個具體的改進建議（如軟裝搭配、家具擺設），以提升空間質感。', description: '裝潢顧問。', category: 'caption' },
-  { id: 'it_cap_6', label: '風景意境', prompt: '請用優美的散文筆觸描寫這張風景照，著重於光影變化與它帶給人的寧靜或震撼感受。', description: '文學描寫。', category: 'caption' },
-  { id: 'it_cap_7', label: '新聞標題', prompt: '假設這是一張新聞照片，請為它下三個聳動但符合事實的新聞標題。', description: '媒體視角。', category: 'caption' },
-  { id: 'it_cap_8', label: '情緒解讀', prompt: '專注分析圖片中人物的面部表情與肢體語言，解讀他們當下可能的情緒狀態與互動關係。', description: '心理分析。', category: 'caption' },
-  { id: 'it_cap_9', label: '構圖分析', prompt: '從攝影學角度分析這張照片的構圖技巧（如三分法、引導線、景深），並評價其視覺引導效果。', description: '攝影教學。', category: 'caption' },
-  { id: 'it_cap_10', label: '時間地點推測', prompt: '根據圖片中的光線、植被、建築風格或路標，推測這張照片可能的拍攝時間（季節/時段）與地理位置。', description: '偵探推理。', category: 'caption' },
-  { id: 'it_cap_11', label: '安全檢查', prompt: '檢視這張工廠或工地照片，指出畫面中潛在的安全隱患或未穿著防護裝備的違規事項。', description: '工安辨識。', category: 'caption' },
-  { id: 'it_cap_12', label: '電影鏡頭分析', prompt: '分析這張電影劇照的鏡頭語言、燈光佈置與色彩心理學，說明導演試圖傳達的敘事隱喻。', description: '影視分析。', category: 'caption' },
-  { id: 'it_cap_13', label: '寵物情緒', prompt: '觀察這隻寵物的耳朵、尾巴狀態與眼神，解讀牠目前的心情（如放鬆、警戒、想玩）。', description: '動物行為。', category: 'caption' },
-  { id: 'it_new_1', label: '風水分析 (趣味)', prompt: '以風水師的角度（趣味性質），評論這張房間或辦公室照片的擺設，並給出招財或招桃花的建議。', description: '趣味玄學。', category: 'caption' },
-  { id: 'it_new_2', label: '手相/面相 (趣味)', prompt: '（趣味性質）根據這張手掌或面部照片，分析其特徵並給出一段積極正向的運勢解讀。', description: '趣味算命。', category: 'caption' },
-  
-  // Extract (OCR)
-  { id: 'it_ext_1', label: '文字提取 (OCR)', prompt: '請將圖片中的所有文字完整轉錄出來，並保持原有的段落結構。', description: '圖片轉文字。', category: 'extract' },
-  { id: 'it_ext_2', label: '菜單翻譯', prompt: '識別這張菜單圖片中的菜名，將其翻譯成中文，並簡單介紹每道菜的內容與口味。', description: '旅遊助手。', category: 'extract' },
-  { id: 'it_ext_3', label: '名片整理', prompt: '從這張名片中提取姓名、職稱、電話、Email 與公司地址，整理成 JSON 格式。', description: '資料建檔。', category: 'extract' },
-  { id: 'it_ext_4', label: '手寫辨識', prompt: '盡力辨識這張圖片中潦草的手寫筆記，並將其整理為數位化的文字檔案。', description: '筆記數位化。', category: 'extract' },
-  { id: 'it_ext_5', label: '發票記帳', prompt: '讀取這張發票或收據的日期、品項與總金額，並分類支出項目（如餐飲、交通）。', description: '財務助手。', category: 'extract' },
-  { id: 'it_ext_6', label: '表格轉 Excel', prompt: '將圖片中的表格數據提取出來，並以 CSV 格式輸出，方便貼上 Excel。', description: '數據處理。', category: 'extract' },
-  { id: 'it_ext_7', label: '合約審閱', prompt: '識別這份合約文件的關鍵條款，並摘要出甲乙雙方的主要權利與義務，特別標註罰則部分。', description: '法律輔助。', category: 'extract' },
-  { id: 'it_ext_8', label: '程式碼截圖', prompt: '將這張程式碼截圖轉換為可執行的文字代碼，並檢查是否有明顯語法錯誤。', description: '代碼復原。', category: 'extract' },
-  { id: 'it_ext_9', label: '書籍摘錄', prompt: '提取書頁照片中的文字，並為這段內容撰寫 100 字的讀書筆記摘要。', description: '學習整理。', category: 'extract' },
-  { id: 'it_ext_10', label: '路標識別', prompt: '識別圖片中的路牌與交通標誌，告訴我這些指示牌代表的行車規則與方向。', description: '導航輔助。', category: 'extract' },
-  { id: 'it_new_ocr_1', label: '手寫信數位化', prompt: '將這封手寫信件轉換為數位文字，保留其溫暖的語氣，並摘要其情感重點。', description: '情感保存。', category: 'extract' },
-  { id: 'it_new_ocr_2', label: 'WiFi 密碼提取', prompt: '從這張路由器背面或告示牌的照片中，找出並列出 WiFi 名稱 (SSID) 與密碼。', description: '生活便利。', category: 'extract' },
+const createImg2TxtPrompts = () => {
+  const prompts: PromptTemplate[] = [];
+  let idCounter = 1;
+  const add = (label: string, prompt: string, desc: string, cat: any) => {
+    prompts.push({ id: `it${idCounter++}`, label, prompt, description: desc, category: cat });
+  };
 
-  // Convert (轉換與解題)
-  { id: 'it_con_1', label: '數學解題', prompt: '請一步步解開這張圖片中的數學題目，並解釋每個步驟的邏輯。', description: '家教老師。', category: 'convert' },
-  { id: 'it_con_2', label: '截圖轉程式碼', prompt: '這是一個網頁/App 的 UI 截圖，請生成能實現此佈局的 HTML/Tailwind CSS 程式碼。', description: '前端切版。', category: 'convert' },
-  { id: 'it_con_3', label: '圖表分析', prompt: '分析這張統計圖表（Bar/Line/Pie Chart），解讀數據趨勢、極值與背後的含義。', description: '數據洞察。', category: 'convert' },
-  { id: 'it_con_4', label: '流程圖轉文字', prompt: '將這張流程圖圖片轉換為條列式的步驟說明文字，解釋流程的邏輯判斷。', description: '邏輯解析。', category: 'convert' },
-  { id: 'it_con_5', label: '樂譜轉 MIDI', prompt: '分析這張五線譜圖片，列出音符序列、節拍與調號。', description: '音樂輔助。', category: 'convert' },
-  { id: 'it_new_con_1', label: '化學式平衡', prompt: '識別圖片中的化學反應式，並協助平衡係數，解釋反應類型。', description: '化學家教。', category: 'convert' },
-  { id: 'it_new_con_2', label: '物理力學分析', prompt: '分析這張物理題目圖片（如滑輪、斜面），畫出受力圖分析 (文字描述) 並列出解題公式。', description: '物理家教。', category: 'convert' },
+  // Caption/Analysis (20)
+  add('詳細描述', '請非常詳細地描述這張圖片的內容，包括場景、人物、動作、物體、顏色、光線和氛圍。', '視覺轉文字。', 'caption');
+  add('重點總結', '請用三句話總結這張圖片傳達的核心訊息。', '快速理解。', 'caption');
+  add('藝術賞析', '請分析這幅藝術作品的風格、構圖、色彩運用以及可能傳達的意涵。', '美學分析。', 'caption');
+  add('情感分析', '這張圖片傳達了什麼樣的情感？（快樂、悲傷、緊張等），請說明理由。', '情緒解讀。', 'caption');
+  add('攝影分析', '請從攝影角度分析這張照片的技巧（光線、構圖、焦距、景深）。', '攝影技巧。', 'caption');
+  add('場景推測', '請推測這張照片是在哪裡拍攝的？有什麼線索支持你的推測？', '推理偵探。', 'caption');
+  add('時間推測', '請推測這張照片是在什麼時間（年代或時刻）拍攝的？', '推理偵探。', 'caption');
+  add('人物關係', '請推測圖片中人物之間的關係，以及他們正在做什麼。', '社交解讀。', 'caption');
+  add('色彩分析', '請分析這張圖片的主要配色方案，並給出 HEX 色碼。', '設計輔助。', 'caption');
+  add('時尚點評', '請點評圖片中人物的穿搭風格，並給出時尚建議。', '時尚分析。', 'caption');
+  add('室內設計分析', '請分析這個房間的裝修風格，並列出主要的設計元素。', '空間分析。', 'caption');
+  add('食物評價', '請描述這道菜看起來如何？推測它的味道和口感。', '美食評論。', 'caption');
+  add('Logo 分析', '請分析這個 Logo 的設計理念和它想傳達的品牌形象。', '品牌分析。', 'caption');
+  add('廣告分析', '請分析這張廣告圖的行銷策略和目標受眾。', '行銷解讀。', 'caption');
+  add('迷因解讀', '請解釋這張迷因 (Meme) 的笑點在哪裡？', '文化解讀。', 'caption');
+  add('無障礙描述', '請為視障人士撰寫這張圖片的替代文字 (Alt Text)。', '無障礙。', 'caption');
+  add('關鍵字標籤', '請為這張圖片生成 10 個相關的 Hashtags。', '社群標籤。', 'caption');
+  add('細節尋找', '請找出圖片中容易被忽略的小細節。', '觀察力。', 'caption');
+  add('風格分類', '請問這張圖片屬於什麼藝術流派或視覺風格？', '風格識別。', 'caption');
+  add('改進建議', '如果這是一張攝影作品，你有什麼改進的建議？', '專業回饋。', 'caption');
 
-  // Object Analysis (物品)
-  { id: 'it_obj_1', label: '卡路里計算', prompt: '辨識圖片中的食物，估算每樣食物的份量與卡路里，並提供總熱量估計。', description: '飲食控制。', category: 'object' },
-  { id: 'it_obj_2', label: '植物辨識', prompt: '請問這張圖片中的植物是什麼品種？請提供它的名稱、學名以及照顧方式（日照、澆水）。', description: '園藝助手。', category: 'object' },
-  { id: 'it_obj_3', label: '寵物/動物辨識', prompt: '辨識圖片中的動物品種，並介紹其性格特徵與習性。', description: '百科全書。', category: 'object' },
-  { id: 'it_obj_4', label: '車型辨識', prompt: '辨識這輛汽車的品牌、型號與大致年份，並列出其主要規格特色。', description: '車迷鑑定。', category: 'object' },
-  { id: 'it_obj_5', label: '產品比價', prompt: '識別圖片中的商品型號，並列出它在市場上的大致價格區間與主要競爭對手。', description: '購物助手。', category: 'object' },
-  { id: 'it_obj_6', label: '歷史文獻', prompt: '辨識這份古文件或手稿的內容與年代，解釋其歷史背景與文化意義。', description: '考古研究。', category: 'object' },
-  { id: 'it_obj_7', label: '產品設計評估', prompt: '從工業設計角度評估這個產品的外觀、人體工學與材質運用，指出其設計亮點與缺點。', description: '產品分析。', category: 'object' },
-  { id: 'it_obj_8', label: '使用指南', prompt: '這是一個產品或設備的照片，請告訴我這通常是用來做什麼的？並列出基本的使用步驟。', description: '說明書。', category: 'object' },
-  { id: 'it_obj_9', label: '清潔保養', prompt: '識別這個物品的材質（如皮革、絲綢、木頭），並提供專業的清潔與保養建議，避免損壞。', description: '生活智慧。', category: 'object' },
-  { id: 'it_obj_10', label: '由來考據', prompt: '識別這個古董或紀念品的風格特徵，推測其可能的產地、年代與歷史淵源。', description: '鑑寶。', category: 'object' },
-  { id: 'it_obj_11', label: 'RPG 角色卡', prompt: '根據這張人物圖片，生成一張 RPG 角色卡，包含：姓名、職業、種族、力量/智力/敏捷數值、特殊技能與背景故事。', description: '遊戲人設。', category: 'object' },
-  { id: 'it_obj_12', label: 'MBTI 分析', prompt: '觀察圖片中人物的穿搭、表情與環境，大膽推測其 MBTI 人格類型，並說明推測依據。', description: '性格分析。', category: 'object' },
-  { id: 'it_new_obj_1', label: '寶石鑑定', prompt: '分析這顆寶石或珠寶的顏色、切工與種類（僅供參考），並給出保養建議。', description: '珠寶賞析。', category: 'object' },
-  { id: 'it_new_obj_2', label: '郵票/錢幣估價', prompt: '識別這枚郵票或錢幣的發行國家與年份，並介紹其收藏價值背景。', description: '收藏助手。', category: 'object' },
-  { id: 'it_new_obj_3', label: '膚質分析', prompt: '（免責聲明：僅供參考）分析臉部照片的膚質狀況，如乾燥、油性或痘痘，並給予一般的保養建議。', description: '美容顧問。', category: 'object' },
-  { id: 'it_new_obj_4', label: '穿搭評分', prompt: '對這套穿搭進行 1-10 分的評分，並給出三個具體的改進或配件搭配建議。', description: '時尚顧問。', category: 'object' },
-  { id: 'it_new_obj_5', label: '酒標識別', prompt: '識別這瓶酒的酒標，介紹其產區、葡萄品種、口感特色與適合搭配的食物。', description: '品酒助手。', category: 'object' },
+  // Extract/OCR (20)
+  add('提取所有文字', '請辨識並提取圖片中的所有文字，並保持原本的段落格式。', '全文 OCR。', 'extract');
+  add('提取手寫字', '這是一份手寫筆記，請盡力將其辨識並轉換為數位文字。', '手寫辨識。', 'extract');
+  add('表格轉 CSV', '請辨識圖片中的表格數據，並將其轉換為 CSV 格式。', '數據提取。', 'extract');
+  add('名片資訊', '請提取這張名片上的姓名、電話、Email 和地址，整理成 JSON 格式。', '資料整理。', 'extract');
+  add('菜單翻譯', '請提取菜單上的菜名，並將其翻譯成中文（附註解）。', '旅遊輔助。', 'extract');
+  add('收據整理', '請提取這張收據的商家名稱、日期、總金額和購買項目。', '記帳輔助。', 'extract');
+  add('路牌識別', '請辨識圖片中路牌上的地名和指示方向。', '導航輔助。', 'extract');
+  add('書籍目錄', '請提取圖片中書籍目錄的章節標題和頁碼。', '資料數位化。', 'extract');
+  add('程式碼提取', '請辨識圖片中的程式碼，並將其轉換為可複製的文本。', '代碼 OCR。', 'extract');
+  add('翻譯圖片文字', '請提取圖片中的外文，並將其翻譯成繁體中文。', '即時翻譯。', 'extract');
+  add('提取數值', '請從這張圖表中提取關鍵的數值數據。', '數據分析。', 'extract');
+  add('提取網址', '請辨識圖片中出現的網址 (URL) 或 Email。', '資訊提取。', 'extract');
+  add('提取日期', '請找出圖片中出現的所有日期和時間資訊。', '資訊提取。', 'extract');
+  add('車牌辨識', '請辨識圖片中的車牌號碼。', '識別。', 'extract');
+  add('產品型號', '請找出圖片中產品的型號或序號。', '識別。', 'extract');
+  add('成分表', '請提取食品包裝上的成分表和營養標示。', '健康資訊。', 'extract');
+  add('藥單識別', '請辨識藥單上的藥品名稱和服用方法。', '醫療輔助。', 'extract');
+  add('字幕提取', '請提取影片截圖中的字幕文字。', '字幕 OCR。', 'extract');
+  add('書法辨識', '請嘗試辨識這幅書法作品上的文字內容。', '藝術 OCR。', 'extract');
+  add('填空題識別', '請辨識這張考卷上的題目文字。', '教育輔助。', 'extract');
 
-  // Creative Script (創意編劇)
-  { id: 'it_script_1', label: '電影劇本', prompt: '以此圖片為電影的一個場景，撰寫一段劇本，包含場景標題、角色動作與對白，營造懸疑氛圍。', description: '編劇靈感。', category: 'creative' },
-  { id: 'it_script_2', label: '短影音腳本', prompt: '根據這張圖片，設計一個 15 秒的 TikTok/Reels 短影音腳本，包含分鏡、旁白與配樂建議，目標是病毒式傳播。', description: '社群爆款。', category: 'creative' },
-  { id: 'it_script_3', label: '廣告分鏡', prompt: '將這張圖片視為產品廣告的 Key Visual，發想其前後的廣告分鏡腳本 (Storyboard)，強調產品賣點。', description: '行銷創意。', category: 'creative' },
-  { id: 'it_script_4', label: '起承轉合 (雙圖)', prompt: '（需上傳兩張以上圖片）將第一張圖作為故事開頭，最後一張圖作為結尾，請創作一個完整的故事，合理化中間的轉折。', description: '多圖敘事。', category: 'creative' },
-  { id: 'it_script_5', label: '中間發生什麼', prompt: '（需上傳兩張圖片）這兩張圖分別代表事件的「前」與「後」，請推理並描述中間發生了什麼事，導致這樣的變化。', description: '推理補完。', category: 'creative' },
-  { id: 'it_script_6', label: '紀錄片旁白', prompt: '以大衛·艾登堡 (David Attenborough) 的語氣，為這張大自然或動物圖片撰寫一段富有深度的紀錄片旁白。', description: '自然生態。', category: 'creative' },
-  { id: 'it_script_7', label: '懸疑開頭', prompt: '以這張圖片為案發現場或線索，撰寫一部推理小說的開頭，埋下令人好奇的伏筆。', description: '小說創作。', category: 'creative' },
-  { id: 'it_script_8', label: '廣播劇', prompt: '僅透過聲音與對話來呈現這張圖片的情境，撰寫一段廣播劇腳本，強調環境音效 (SFX)。', description: '聲音敘事。', category: 'creative' },
-  { id: 'it_script_9', label: '互動小說', prompt: '這是一個文字冒險遊戲的場景，請描述現況，並給出三個選項供玩家選擇下一步行動。', description: '遊戲腳本。', category: 'creative' },
-  { id: 'it_script_10', label: '迷因生成', prompt: '為這張圖片配上一個幽默、諷刺的迷因 (Meme) 文字，契合當下的網路流行語。', description: '梗圖製作。', category: 'creative' },
-  { id: 'it_script_11', label: '情書創作', prompt: '將這張圖片視為定情之物或回憶場景，寫一封感人肺腑的情書給圖片中的對象。', description: '情感表達。', category: 'creative' },
-  { id: 'it_script_12', label: '科幻日誌', prompt: '這是在外星球探索時拍下的照片，請以艦長日誌的形式記錄這個新發現的物種或遺跡。', description: '科幻設定。', category: 'creative' },
-];
+  // Convert/Solve (20)
+  add('解數學題', '請解出圖片中的數學題目，並提供詳細的逐步解題過程。', '數學家教。', 'convert');
+  add('物理題目', '請分析這道物理題目，列出公式並計算答案。', '理科輔助。', 'convert');
+  add('化學結構', '請辨識這個化學結構式，並給出它的 IUPAC 名稱。', '化學輔助。', 'convert');
+  add('幾何證明', '請根據圖片中的幾何圖形，證明題目要求的結論。', '幾何求解。', 'convert');
+  add('圖表分析', '請分析這張統計圖表（長條圖/圓餅圖），總結出 3 個關鍵洞察。', '數據解讀。', 'convert');
+  add('流程圖轉文字', '請將這張流程圖的邏輯轉換為文字步驟說明。', '邏輯轉換。', 'convert');
+  add('樂譜轉 MIDI', '請辨識這段五線譜，並描述其旋律（或生成 ABC 記譜法）。', '音樂輔助。', 'convert');
+  add('棋局分析', '請分析這張圍棋/西洋棋的殘局，建議下一步的最佳走法。', '棋力分析。', 'convert');
+  add('翻譯漫畫', '請翻譯這頁漫畫中的對話氣泡，並說明劇情。', '漫畫翻譯。', 'convert');
+  add('填字遊戲', '請幫我解開這個填字遊戲的謎題。', '遊戲攻略。', 'convert');
+  add('電路圖分析', '請分析這個電路圖的功能和運作原理。', '工程分析。', 'convert');
+  add('心智圖轉大綱', '請將這張心智圖轉換為階層式的文字大綱。', '筆記整理。', 'convert');
+  add('手繪轉流程', '將這張手繪的草圖轉換為mermaid格式的流程圖代碼。', '數位化。', 'convert');
+  add('食譜熱量', '根據這張食物照片，估算其熱量和營養成分。', '飲食管理。', 'convert');
+  add('看圖猜成語', '這張圖片代表哪一個成語？', '趣味猜謎。', 'convert');
+  add('謎題解答', '請解開圖片中的邏輯謎題。', '智力測驗。', 'convert');
+  add('吉他譜辨識', '請辨識圖片中的吉他和弦指法。', '音樂學習。', 'convert');
+  add('星圖辨識', '請問這是哪個星座或星區？', '天文辨識。', 'convert');
+  add('手相分析', '（娛樂用）請簡單分析這張手相圖片。', '趣味算命。', 'convert');
+  add('色盲測試', '請告訴我這張色盲測試圖中隱藏的數字或圖形。', '視覺輔助。', 'convert');
+
+  // Coding (HTML/CSS/Code) (15)
+  add('截圖轉 HTML', '這是一張網頁設計截圖，請為我生成對應的 HTML/Tailwind CSS 程式碼。', '前端切版。', 'coding');
+  add('手繪 UI 轉 Code', '這是 App 介面的手繪草圖，請生成 React Native 的基本結構代碼。', '原型開發。', 'coding');
+  add('表單轉 HTML', '請將圖片中的表格轉換為 HTML <table> 代碼。', '代碼生成。', 'coding');
+  add('配色轉 CSS', '請提取圖片中的配色，生成 CSS Variable 變數定義。', '樣式生成。', 'coding');
+  add('Bootstrap 轉換', '請將這個網頁佈局轉換為 Bootstrap 5 的網格結構。', '框架轉換。', 'coding');
+  add('解釋代碼截圖', '這是一張程式碼截圖，請解釋這段代碼在做什麼。', '代碼理解。', 'coding');
+  add('Debug 截圖', '這張截圖顯示了錯誤訊息，請告訴我可能的原因和解決方法。', '除錯。', 'coding');
+  add('SQL schema', '根據這張 ER Model 圖，生成建立資料庫的 SQL 語句。', '資料庫。', 'coding');
+  add('JSON 生成', '請將圖片中的資料結構整理成 JSON 格式。', '數據格式化。', 'coding');
+  add('Python 繪圖', '請寫一段 Python Matplotlib 代碼來繪製出圖片中的圖表。', '數據可視化。', 'coding');
+  add('SVG 生成', '請寫一段 SVG 代碼來繪製圖片中的簡單幾何圖形。', '圖形編碼。', 'coding');
+  add('UML 轉 Code', '請將這張 UML 類別圖轉換為 Java 類別定義代碼。', '架構實作。', 'coding');
+  add('按鈕樣式', '請模仿圖片中按鈕的樣式（漸層、陰影），寫出 CSS 代碼。', 'UI 複製。', 'coding');
+  add('Flexbox 佈局', '請分析圖片中的佈局，寫出對應的 Flexbox CSS。', '佈局實作。', 'coding');
+  add('Grid 佈局', '請分析圖片中的網格佈局，寫出對應的 CSS Grid 代碼。', '佈局實作。', 'coding');
+
+  // Object/Creative (25)
+  add('植物識別', '請問這張圖片中的植物是什麼？並提供照顧建議。', '百科。', 'object');
+  add('動物識別', '請問這是什麼品種的貓/狗/動物？', '百科。', 'object');
+  add('地標識別', '請問這是哪個著名的地標建築？位於哪個城市？', '旅遊。', 'object');
+  add('車型識別', '請問這輛車的品牌和型號是什麼？', '百科。', 'object');
+  add('酒標識別', '請辨識這瓶酒的品牌、產地和年份，並給出評價。', '品酒。', 'object');
+  add('昆蟲識別', '請問這是什麼昆蟲？有毒嗎？', '生態。', 'object');
+  add('名畫識別', '請問這幅畫的作者是誰？作品名稱是什麼？', '藝術。', 'object');
+  add('字體識別', '請推測圖片中使用了什麼字體（或類似字體）。', '設計。', 'object');
+  add('品牌識別', '請辨識圖片中出現的所有時尚品牌。', '時尚。', 'object');
+  add('熱量估算', '請估算這盤食物的總熱量。', '健康。', 'object');
+  add('看圖說故事', '請根據這張圖片的畫面，發揮想像力，創作一個 200 字的短篇故事。', '創意寫作。', 'creative');
+  add('IG 文案', '請為這張圖片撰寫一篇吸引人的 Instagram 貼文，包含 Hashtags。', '社群小編。', 'creative');
+  add('商品文案', '請為這張商品圖撰寫一段具備銷售吸引力的電商文案。', '行銷。', 'creative');
+  add('詩歌創作', '請看著這張風景照，創作一首短詩。', '文學。', 'creative');
+  add('電影對白', '請為這張人物照片設計一段電影感的內心獨白。', '劇本。', 'creative');
+  add('迷因製作', '請為這張圖片配上一個好笑的標題 (Caption)，使其成為迷因。', '幽默。', 'creative');
+  add('食譜發想', '這是一張冰箱食材的照片，請告訴我可以用這些做出什麼菜？', '生活助手。', 'object');
+  add('穿搭建議', '這是我衣櫃的照片，請幫我搭配出一套適合約會的服裝。', '時尚顧問。', 'object');
+  add('裝潢建議', '這是我房間的照片，請建議如何擺放家具或增加裝飾。', '室內設計。', 'object');
+  add('修理建議', '這東西壞了（如照片），請問該如何修理？', '生活百科。', 'object');
+  add('估價', '請幫我估算這件古董/二手物品大約值多少錢？', '二手鑑價。', 'object');
+  add('相似推薦', '這件衣服很好看，請推薦類似款式的關鍵字。', '購物助手。', 'object');
+  add('景點導覽', '這是一張博物館展品的照片，請像導覽員一樣介紹它。', '導覽。', 'object');
+  add('瑜珈體式', '請問這個瑜珈動作叫什麼？有什麼好處？', '運動。', 'object');
+  add('皮膚檢測', '（娛樂用）請分析照片中的皮膚狀況，並給予保養建議。', '美容。', 'object');
+
+  return prompts;
+};
+
+export const IMG2TXT_PROMPTS = createImg2TxtPrompts();
+
 
 // --- IMG2VID CATEGORIES & PROMPTS ---
 
 export const IMG2VID_CATEGORIES = [
   { id: 'all', label: '全部' },
-  { id: 'camera_movement', label: '運鏡技巧' },
-  { id: 'physics', label: '物理動態' },
-  { id: 'atmosphere', label: '環境氛圍' },
+  { id: 'camera', label: '運鏡技巧' },
+  { id: 'physics', label: '物理與自然' },
   { id: 'vfx', label: '特效與創意' },
+  { id: 'character', label: '人物與動作' },
+  { id: 'atmosphere', label: '氛圍營造' },
 ];
 
-export const IMG2VID_PROMPTS: PromptTemplate[] = [
-  // Camera Movement (運鏡)
-  { id: 'v_cam_1', label: '向右平移', prompt: '電影級向右平移：鏡頭平滑地向右水平移動，展示更多場景細節。', description: '橫向運鏡。', category: 'camera_movement' },
-  { id: 'v_cam_2', label: '推軌鏡頭 (In)', prompt: '緩慢向前推軌：鏡頭物理性地靠近主體，增加親密感與聚焦。', description: '推進鏡頭。', category: 'camera_movement' },
-  { id: 'v_cam_3', label: '推軌鏡頭 (Out)', prompt: '緩慢向後拉軌：鏡頭向後拉遠，揭示主體周圍的環境與背景。', description: '拉遠鏡頭。', category: 'camera_movement' },
-  { id: 'v_cam_4', label: '環繞運鏡', prompt: '環繞拍攝：鏡頭圍繞中心主體旋轉，從不同角度展示。', description: '360度環繞。', category: 'camera_movement' },
-  { id: 'v_cam_5', label: '俯瞰鏡頭', prompt: '無人機俯視：鏡頭在上方翱翔，垂直向下俯瞰風景，緩慢向前移動。', description: '無人機視角。', category: 'camera_movement' },
-  { id: 'v_cam_6', label: '手持晃動', prompt: '手持攝影機：輕微的鏡頭晃動，營造真實的紀錄片風格。', description: '紀錄片感。', category: 'camera_movement' },
-  { id: 'v_cam_7', label: '變焦 (Zoom In)', prompt: '光學變焦放大：鏡頭在不改變位置的情況下放大焦點。', description: '光學變焦。', category: 'camera_movement' },
-  { id: 'v_cam_8', label: '滑軌側移', prompt: '滑軌側移：鏡頭向左平滑移動，與前景物體產生視差效果。', description: '平滑側移。', category: 'camera_movement' },
-  { id: 'v_cam_9', label: '搖臂升降', prompt: '搖臂升鏡：鏡頭從地面垂直上升至高角度俯視。', description: '垂直升降。', category: 'camera_movement' },
-  { id: 'v_cam_10', label: '極速變焦', prompt: '急速變焦：突然且快速地放大主體臉部，營造戲劇性或喜劇效果。', description: '戲劇性變焦。', category: 'camera_movement' },
-  { id: 'v_cam_11', label: '希區考克變焦', prompt: '滑動變焦 (暈眩效果)：鏡頭向後移動的同時進行光學放大，扭曲背景透視。', description: '暈眩效果。', category: 'camera_movement' },
-  { id: 'v_cam_12', label: '低角度跟拍', prompt: '低角度跟拍：鏡頭從低處跟隨主體，使其看起來強大且具支配力。', description: '仰視跟拍。', category: 'camera_movement' },
-  { id: 'v_cam_new_1', label: '麥可貝旋轉', prompt: '麥可貝風格：圍繞主體進行 360 度快速旋轉，配合動態運鏡，動作片風格。', description: '英雄式旋轉。', category: 'camera_movement' },
-  { id: 'v_cam_new_2', label: '魏斯安德森橫移', prompt: '魏斯安德森風格：完美的對稱構圖，純粹的橫向平移鏡頭，奇幻風格。', description: '對稱橫移。', category: 'camera_movement' },
-  { id: 'v_cam_new_3', label: 'FPV 穿越', prompt: 'FPV 穿越機俯衝：快速且特技般的無人機運鏡，從懸崖俯衝或穿過狹窄縫隙。', description: '極限穿越。', category: 'camera_movement' },
-  { id: 'v_cam_new_4', label: '第一人稱視角', prompt: '主觀視角 (POV)：模擬透過角色的眼睛觀看，自然地環顧四周。', description: '主觀視角。', category: 'camera_movement' },
-  { id: 'v_cam_new_5', label: '旋轉俯衝', prompt: '螺旋俯衝：鏡頭在向前/向下移動的同時旋轉，造成迷失方向的動態感。', description: '螺旋運動。', category: 'camera_movement' },
-  
-  // Physics & Motion (物理)
-  { id: 'v_phy_1', label: '隨風飄動', prompt: '頭髮和衣服在風中輕輕飄動，呈現逼真的物理動態。', description: '自然風吹。', category: 'physics' },
-  { id: 'v_phy_2', label: '水流動態', prompt: '流動的水，河流自然流動，陽光在移動的水面上反射。', description: '流水潺潺。', category: 'physics' },
-  { id: 'v_phy_3', label: '火焰燃燒', prompt: '壁爐中閃爍的火焰，逼真的火苗與緩緩升起的煙霧。', description: '火焰動態。', category: 'physics' },
-  { id: 'v_phy_4', label: '煙霧繚繞', prompt: '濃霧在地表滾動，煙霧繚繞的圖案緩慢移動。', description: '迷霧效果。', category: 'physics' },
-  { id: 'v_phy_5', label: '車輛行駛', prompt: '汽車在高速公路上行駛，車輪轉動，帶有動態模糊效果。', description: '交通動態。', category: 'physics' },
-  { id: 'v_phy_6', label: '人群走動', prompt: '背景中有人群走動，呈現繁忙的城市街道氛圍。', description: '城市活力。', category: 'physics' },
-  { id: 'v_phy_7', label: '雲層流動', prompt: '藍天中的雲層快速移動的縮時攝影效果。', description: '縮時攝影。', category: 'physics' },
-  { id: 'v_phy_8', label: '粒子消散', prompt: '物體緩慢分解成發光的粒子，隨風飄散，魔法效果。', description: '魔法消散。', category: 'physics' },
-  { id: 'v_phy_9', label: '能量流動', prompt: '發光的能量流穿過纜線或物體，呈現脈衝光效。', description: '科技能量。', category: 'physics' },
-  { id: 'v_phy_10', label: '物體碎裂', prompt: '物體以慢動作龜裂並粉碎成碎片，殘骸向外飛散。', description: '爆破效果。', category: 'physics' },
-  { id: 'v_phy_11', label: '液體潑濺', prompt: '慢動作液體潑濺，水珠懸浮在空中，流體力學效果。', description: '液體廣告。', category: 'physics' },
-  { id: 'v_phy_12', label: '布料模擬', prompt: '絲綢布料在慢動作中優雅地飄動，逼真的布料模擬與摺痕。', description: '絲綢飄逸。', category: 'physics' },
-  { id: 'v_phy_new_1', label: '花朵綻放', prompt: '花苞綻放的縮時攝影，細緻的花瓣展開動作。', description: '生命綻放。', category: 'physics' },
-  { id: 'v_phy_new_2', label: '雨滴落下', prompt: '雨滴落在水坑中，產生向外擴散的漣漪。', description: '漣漪效果。', category: 'physics' },
-  { id: 'v_phy_new_3', label: '玻璃破碎', prompt: '玻璃窗碎裂成數千片碎片，慢動作物理效果。', description: '碎裂瞬間。', category: 'physics' },
-  { id: 'v_phy_new_4', label: '頭髮飄逸', prompt: '細緻的髮絲在慢動作微風中優美飄動，洗髮精廣告風格。', description: '髮絲動態。', category: 'physics' },
-  { id: 'v_phy_new_5', label: '旗幟飄揚', prompt: '旗幟在強風中劇烈飄揚，展現布料張力與運動。', description: '旗幟動態。', category: 'physics' },
+const createImg2VidPrompts = () => {
+  const prompts: PromptTemplate[] = [];
+  let idCounter = 1;
+  const add = (label: string, prompt: string, desc: string, cat: any) => {
+    prompts.push({ id: `v${idCounter++}`, label, prompt, description: desc, category: cat });
+  };
 
-  // Atmosphere (氛圍)
-  { id: 'v_atm_1', label: '下雨場景', prompt: '大雨滂沱，雨滴濺落在表面，潮濕的氛圍。', description: '雨天。', category: 'atmosphere' },
-  { id: 'v_atm_2', label: '下雪場景', prompt: '柔和的雪花緩緩飄落，堆積在物體表面，冬季氛圍。', description: '雪景。', category: 'atmosphere' },
-  { id: 'v_atm_3', label: '光影變化', prompt: '隨著雲層飄過，陽光發生變化，動態的光影轉移。', description: '光影流動。', category: 'atmosphere' },
-  { id: 'v_atm_4', label: '灰塵顆粒', prompt: '灰塵顆粒在陽光束中飛舞，電影般的燈光氛圍 (丁達爾效應)。', description: '丁達爾光。', category: 'atmosphere' },
-  { id: 'v_atm_5', label: '雷電交加', prompt: '暴風雨天空，閃電照亮黑暗的雲層。', description: '暴風雨。', category: 'atmosphere' },
-  { id: 'v_atm_6', label: '櫻花飄落', prompt: '櫻花花瓣在微風中緩緩飄落，浪漫的動漫風格。', description: '浪漫花瓣。', category: 'atmosphere' },
-  { id: 'v_atm_new_1', label: '極光舞動', prompt: '北極光在夜空中變幻舞動，綠色與紫色的色彩流動。', description: '極光奇觀。', category: 'atmosphere' },
-  { id: 'v_atm_new_2', label: '日出縮時', prompt: '日出縮時攝影，天空顏色從紫色轉為橘色再到藍色，太陽從地平線升起。', description: '日出過程。', category: 'atmosphere' },
-  { id: 'v_atm_new_3', label: '星軌旋轉', prompt: '夜空中的星軌旋轉，天文縮時攝影效果。', description: '星空軌跡。', category: 'atmosphere' },
-  { id: 'v_atm_new_4', label: '水底光束', prompt: '水下視角，光束穿透水面，焦散圖案 (Caustics) 在海底移動。', description: '深海光影。', category: 'atmosphere' },
+  // Camera Movement (25)
+  add('向右平移', '鏡頭平滑地向右水平移動 (Truck Right)，展示更多場景細節。', '水平運鏡。', 'camera');
+  add('向左平移', '鏡頭平滑地向左水平移動 (Truck Left)，引導視線。', '水平運鏡。', 'camera');
+  add('向上平移', '鏡頭緩慢向上移動 (Pedestal Up)，展現物體的高度或天空。', '垂直運鏡。', 'camera');
+  add('向下平移', '鏡頭緩慢向下移動 (Pedestal Down)，從天空回到地面。', '垂直運鏡。', 'camera');
+  add('推軌鏡頭', '鏡頭緩慢向前推進 (Dolly In)，聚焦於主體，增加戲劇張力。', '聚焦運鏡。', 'camera');
+  add('拉遠鏡頭', '鏡頭緩慢向後拉遠 (Dolly Out)，展示主體與環境的關係，營造孤獨感。', '敘事運鏡。', 'camera');
+  add('Zoom In', '鏡頭變焦放大 (Zoom In)，快速聚焦細節，類似希區考克變焦效果。', '變焦。', 'camera');
+  add('Zoom Out', '鏡頭變焦拉遠 (Zoom Out)，揭示全景。', '變焦。', 'camera');
+  add('環繞運鏡', '鏡頭以主體為中心進行 360 度環繞 (Orbit)，展示立體感。', '環繞。', 'camera');
+  add('半圓環繞', '鏡頭進行 180 度半圓環繞，展現側顏和背景變化。', '環繞。', 'camera');
+  add('搖攝 (Pan Right)', '相機位置不變，鏡頭向右轉動 (Pan Right)，掃描風景。', '全景掃描。', 'camera');
+  add('搖攝 (Pan Left)', '相機位置不變，鏡頭向左轉動 (Pan Left)。', '全景掃描。', 'camera');
+  add('仰視鏡頭', '低角度仰拍 (Low Angle)，鏡頭緩慢上抬，展現建築或人物的宏偉。', '角度變化。', 'camera');
+  add('俯視鏡頭', '高角度俯拍 (High Angle)，鏡頭緩慢下壓，展現渺小感。', '角度變化。', 'camera');
+  add('航拍飛越', '模擬無人機視角，快速飛越風景 (Drone Flyover)。', '航拍。', 'camera');
+  add('航拍後退', '模擬無人機視角，向上並向後飛離 (Drone Pull-away)。', '航拍。', 'camera');
+  add('手持晃動', '模擬手持攝影機的自然晃動感 (Handheld Shake)，增加真實紀錄片風格。', '真實感。', 'camera');
+  add('第一人稱', '模擬第一人稱視角 (POV) 向前行走，身臨其境。', 'POV。', 'camera');
+  add('跟隨鏡頭', '鏡頭跟隨主體移動 (Follow Shot)，保持主體在畫面中心。', '跟隨。', 'camera');
+  add('荷蘭式傾斜', '鏡頭傾斜旋轉 (Dutch Angle)，營造不安或混亂的氛圍。', '藝術運鏡。', 'camera');
+  add('旋轉鏡頭', '鏡頭自身旋轉 (Roll)，造成天旋地轉的效果。', '暈眩感。', 'camera');
+  add('極速推進', '極快速度向前推進 (Crash Zoom)，強烈的視覺衝擊。', '衝擊力。', 'camera');
+  add('慢速平移', '極其緩慢的平移，營造靜謐、沉思的氛圍。', '慢節奏。', 'camera');
+  add('對焦變化', '從背景模糊慢慢對焦到前景主體 (Rack Focus)。', '焦點轉移。', 'camera');
+  add('滑軌運鏡', '模擬使用滑軌 (Slider) 的平穩移動效果。', '穩定運鏡。', 'camera');
 
-  // VFX (特效)
-  { id: 'v_vfx_1', label: '賽博故障', prompt: '賽博龐克故障效果，數位失真，RGB 分離，畫面撕裂。', description: '故障藝術。', category: 'vfx' },
-  { id: 'v_vfx_2', label: '老電影感', prompt: '復古電影質感，顆粒感，刮痕，放映機閃爍效果，棕褐色調。', description: '膠卷質感。', category: 'vfx' },
-  { id: 'v_vfx_3', label: '霓虹閃爍', prompt: '霓虹燈招牌閃爍不定，黑暗城市街道中的嗡嗡燈光效果。', description: '霓虹夜景。', category: 'vfx' },
-  { id: 'v_vfx_4', label: '鏡頭光暈', prompt: '變形鏡頭光暈 (Lens Flares) 劃過螢幕，電影科幻感。', description: 'JJ Abrams。', category: 'vfx' },
-  { id: 'v_vfx_5', label: '熱浪變形', prompt: '熱浪造成的空氣扭曲，從炙熱地面升起，海市蜃樓效果。', description: '高溫熱浪。', category: 'vfx' },
-  { id: 'v_vfx_6', label: 'VHS 錄影帶', prompt: 'VHS 錄影帶追蹤錯誤，低解析度，色彩溢出，復古 80 年代美學。', description: 'VHS 風格。', category: 'vfx' },
-  { id: 'v_vfx_new_1', label: '駭客任務', prompt: '駭客任務風格的數位代碼雨在前景落下，綠色的二進位數字。', description: '數位代碼。', category: 'vfx' },
-  { id: 'v_vfx_new_2', label: '靈魂出竅', prompt: '跟隨主體移動的殘影拖尾效果，迷幻的視覺迴聲。', description: '殘影特效。', category: 'vfx' },
-  { id: 'v_vfx_new_3', label: '時間倒流', prompt: '倒轉動作，物體向後移動，水向上流，超現實效果。', description: '倒帶效果。', category: 'vfx' },
-  { id: 'v_vfx_new_4', label: '漫畫速度線', prompt: '動漫風格的速度線向中心衝刺，強調強烈的動作感。', description: '速度感。', category: 'vfx' },
-  { id: 'v_vfx_new_5', label: '多重分身', prompt: '萬花筒效果，多次鏡像反射影像，幾何圖案。', description: '萬花筒。', category: 'vfx' },
-];
+  // Physics/Nature (25)
+  add('水流動態', '讓畫面中的河流自然流動，水波粼粼。', '流體。', 'physics');
+  add('海浪拍打', '海浪拍打岸邊的岩石，激起浪花。', '海洋。', 'physics');
+  add('瀑布落下', '瀑布的水流垂直落下，水霧瀰漫。', '流體。', 'physics');
+  add('雨滴落下', '天空下起細雨，雨滴落在地面濺起水花，或是落在玻璃上滑落。', '天氣。', 'physics');
+  add('雪花飄落', '大雪紛飛，雪花緩緩飄落，堆積在物體上。', '天氣。', 'physics');
+  add('火焰燃燒', '營火或蠟燭的火焰自然跳動，火星飛舞。', '火焰。', 'physics');
+  add('煙霧升起', '煙霧緩緩升起，消散在空中，形態自然變化。', '氣體。', 'physics');
+  add('雲層流動', '天空中的雲層快速流動 (Timelapse)，光影隨之變化。', '縮時。', 'physics');
+  add('風吹樹葉', '樹葉在風中輕輕搖曳，草地起伏如波浪。', '植被。', 'physics');
+  add('花朵綻放', '花朵從花苞狀態快速綻放 (Blooming Timelapse)。', '縮時。', 'physics');
+  add('旗幟飄揚', '旗幟在風中劇烈飄揚。', '布料。', 'physics');
+  add('頭髮飄動', '人物的頭髮在微風中自然飄動。', '毛髮。', 'physics');
+  add('衣擺擺動', '人物的裙擺或衣角隨風飄動。', '布料。', 'physics');
+  add('灰塵飛舞', '光束中可見細微的灰塵顆粒在空氣中漂浮。', '粒子。', 'physics');
+  add('水面波紋', '平靜的水面產生一圈圈漣漪。', '流體。', 'physics');
+  add('蒸汽噴出', '蒸汽從管道或杯子中噴出或冒出。', '氣體。', 'physics');
+  add('閃電劃過', '烏雲密佈，一道閃電劃破天際，瞬間照亮場景。', '天氣。', 'physics');
+  add('爆炸效果', '遠處發生爆炸，煙塵和火光擴散 (注意安全內容過濾)。', '爆炸。', 'physics');
+  add('玻璃破碎', '玻璃窗碎裂，碎片四散飛濺 (慢動作)。', '破壞。', 'physics');
+  add('液體潑灑', '液體（如牛奶、咖啡）潑灑出來的瞬間動態。', '流體。', 'physics');
+  add('氣泡上升', '水下的氣泡緩緩上升。', '水下。', 'physics');
+  add('沙塵暴', '沙塵暴席捲而來，能見度降低，沙粒飛舞。', '天氣。', 'physics');
+  add('極光舞動', '天空中的極光如絲帶般舞動變化。', '光影。', 'physics');
+  add('日出過程', '太陽從地平線升起，光線逐漸變亮 (Timelapse)。', '縮時。', 'physics');
+  add('日落過程', '太陽落下，天色變暗，城市燈光亮起 (Timelapse)。', '縮時。', 'physics');
+
+  // VFX/Creative (25)
+  add('時光倒流', '畫面中的動作倒帶播放，水流倒流，碎片重組。', '時間特效。', 'vfx');
+  add('慢動作', '動作以極慢的速度播放 (Super Slow Motion)，展現細節。', '時間特效。', 'vfx');
+  add('子彈時間', '凍結時間，攝影機圍繞主體旋轉 (Matrix Bullet Time)。', '特效。', 'vfx');
+  add('故障藝術', '畫面出現數位的 Glitch 故障干擾，色彩分離，像素化。', '故障風。', 'vfx');
+  add('全息投影', '物體變成半透明的藍色全息投影，帶有掃描線。', '科幻。', 'vfx');
+  add('卡通化轉場', '畫面從寫實風格過渡到卡通渲染風格。', '轉場。', 'vfx');
+  add('粒子消散', '主體化為塵埃或粒子隨風消散 (Thanos Snap)。', '粒子。', 'vfx');
+  add('發光特效', '主體的邊緣發出強烈的光芒 (Glowing Edge)。', '光效。', 'vfx');
+  add('靈魂出竅', '半透明的靈魂從身體中分離出來。', '特效。', 'vfx');
+  add('顏色變換', '物體的顏色在影片中不斷變化 (Color Cycling)。', '色彩。', 'vfx');
+  add('鏡像萬花筒', '畫面產生鏡像對稱或萬花筒般的幾何變化。', '幾何。', 'vfx');
+  add('液化變形', '物體像液體一樣融化或變形 (Morphing)。', '變形。', 'vfx');
+  add('像素化', '畫面逐漸變得像素化，像復古遊戲。', '復古。', 'vfx');
+  add('老電影', '增加膠片顆粒、刮痕和抖動，模擬老電影放映機效果。', '復古。', 'vfx');
+  add('漫畫速度線', '背景增加漫畫風格的速度線，營造衝刺感。', '動漫。', 'vfx');
+  add('能量力場', '主體周圍產生可見的能量護盾或力場波動。', '科幻。', 'vfx');
+  add('黑洞吸入', '畫面中心出現黑洞扭曲，將周圍物體吸入。', '引力。', 'vfx');
+  add('定格動畫', '模擬定格動畫 (Stop Motion) 的卡頓感。', '藝術。', 'vfx');
+  add('素描生長', '畫面從白紙開始，線條逐漸生長成完整的素描畫。', '生長。', 'vfx');
+  add('水墨暈染', '畫面如水墨滴入水中般擴散開來。', '藝術。', 'vfx');
+  add('賽博掃描', '一道雷射光掃描過物體，顯示出內部的線框結構。', '科幻。', 'vfx');
+  add('夢境模糊', '邊緣模糊，色彩飽和度增加，營造夢境般的迷離感。', '氛圍。', 'vfx');
+  add('VHS 錄影帶', '模擬 80 年代 VHS 錄影帶的雜訊和色彩偏移。', '復古。', 'vfx');
+  add('熱成像動態', '模擬熱成像儀拍攝的動態效果。', '濾鏡。', 'vfx');
+  add('X光動態', '模擬 X 光透視下的骨骼或機械運動。', '濾鏡。', 'vfx');
+
+  // Character/Action (25)
+  add('眨眼', '人物自然地眨眼，眼神有神。', '表情。', 'character');
+  add('微笑', '人物從面無表情轉為微笑。', '表情。', 'character');
+  add('轉頭', '人物將頭轉向鏡頭或轉向側面。', '動作。', 'character');
+  add('點頭', '人物微微點頭表示同意。', '動作。', 'character');
+  add('揮手', '人物舉起手向鏡頭揮手打招呼。', '動作。', 'character');
+  add('說話', '人物嘴巴自然開合，彷彿在說話（不一定對嘴）。', '表情。', 'character');
+  add('走路', '人物向前行走的動作循環 (Walk Cycle)。', '動作。', 'character');
+  add('奔跑', '人物快速奔跑的動作。', '動作。', 'character');
+  add('跳舞', '人物進行簡單的舞蹈動作。', '動作。', 'character');
+  add('吃東西', '人物將食物送入口中咀嚼。', '動作。', 'character');
+  add('喝水', '人物舉起杯子喝水。', '動作。', 'character');
+  add('看書', '人物翻動書頁。', '動作。', 'character');
+  add('打字', '人物在鍵盤上打字的手部動作。', '動作。', 'character');
+  add('哭泣', '人物流下眼淚，表情悲傷。', '表情。', 'character');
+  add('驚訝', '人物露出驚訝的表情，張大嘴巴。', '表情。', 'character');
+  add('生氣', '人物眉頭緊鎖，表情憤怒。', '表情。', 'character');
+  add('伸懶腰', '人物伸懶腰，放鬆身體。', '動作。', 'character');
+  add('撥頭髮', '人物用手撥弄頭髮。', '動作。', 'character');
+  add('戴眼鏡', '人物戴上或推扶眼鏡。', '動作。', 'character');
+  add('看手錶', '人物抬起手腕看時間。', '動作。', 'character');
+  add('拿手機', '人物拿出手機滑動螢幕。', '動作。', 'character');
+  add('鼓掌', '人物雙手拍手鼓掌。', '動作。', 'character');
+  add('比讚', '人物豎起大拇指比讚。', '動作。', 'character');
+  add('擁抱', '兩個人物互相擁抱。', '互動。', 'character');
+  add('握手', '兩個人物進行握手。', '互動。', 'character');
+
+  // Atmosphere (25)
+  add('恐怖氛圍', '燈光忽明忽暗，陰影中似乎有東西在動，營造恐怖感。', '恐怖。', 'atmosphere');
+  add('浪漫氛圍', '柔和的燭光搖曳，玫瑰花瓣飄落，溫馨浪漫。', '浪漫。', 'atmosphere');
+  add('孤獨氛圍', '空蕩蕩的街道，冷色調，落葉飄過，孤獨寂寥。', '孤獨。', 'atmosphere');
+  add('歡樂氛圍', '彩帶飄落，氣球飛舞，明亮的燈光，派對氣氛。', '歡樂。', 'atmosphere');
+  add('緊張氛圍', '急促的鏡頭晃動，心跳般的紅光閃爍，緊迫感。', '緊張。', 'atmosphere');
+  add('神聖氛圍', '光芒從雲層射下 (God Rays)，塵埃在光柱中飛舞，莊嚴神聖。', '神聖。', 'atmosphere');
+  add('神秘氛圍', '濃霧瀰漫，隱約可見的光源，未知感。', '神秘。', 'atmosphere');
+  add('懷舊氛圍', '暖黃色調，老舊的顆粒感，緩慢的節奏，回憶感。', '懷舊。', 'atmosphere');
+  add('戰鬥氛圍', '硝煙瀰漫，火光閃爍，碎片飛濺，戰場氣氛。', '戰爭。', 'atmosphere');
+  add('寧靜氛圍', '平靜的湖面，微風拂過，鳥兒飛過，放鬆感。', '寧靜。', 'atmosphere');
+  add('賽博氛圍', '霓虹燈閃爍，雨水反射，全息廣告，未來科技感。', '賽博。', 'atmosphere');
+  add('魔幻氛圍', '紫色的魔法光點漂浮，奇異的植物發光。', '魔幻。', 'atmosphere');
+  add('末日氛圍', '灰暗的天空，廢墟，風沙吹過，荒涼感。', '末日。', 'atmosphere');
+  add('童話氛圍', '鮮豔的色彩，柔和的光線，像夢境一樣美好。', '童話。', 'atmosphere');
+  add('悲傷氛圍', '窗外下著雨，室內光線昏暗，藍色調。', '悲傷。', 'atmosphere');
+  add('希望氛圍', '日出破曉，陽光驅散黑暗，生機勃勃。', '希望。', 'atmosphere');
+  add('混亂氛圍', '快速的剪輯，旋轉的鏡頭，色彩失真，迷幻感。', '混亂。', 'atmosphere');
+  add('寒冷氛圍', '呼出的白氣，結霜的玻璃，冷藍色調。', '寒冷。', 'atmosphere');
+  add('炎熱氛圍', '空氣因熱浪而扭曲，強烈的陽光，高飽和度。', '炎熱。', 'atmosphere');
+  add('奢華氛圍', '金光閃閃，閃耀的珠寶反光，絲綢質感。', '奢華。', 'atmosphere');
+  add('工業氛圍', '蒸汽噴出，齒輪轉動，金屬質感，冷峻。', '工業。', 'atmosphere');
+  add('自然氛圍', '森林的聲音，陽光透過樹葉，充滿生命力。', '自然。', 'atmosphere');
+  add('都市氛圍', '車水馬龍，霓虹燈，快節奏的城市生活。', '都市。', 'atmosphere');
+  add('鄉村氛圍', '風吹麥浪，農舍，悠閒的田園風光。', '鄉村。', 'atmosphere');
+  add('深海氛圍', '深藍色，光線微弱，浮游生物發光，壓抑感。', '深海。', 'atmosphere');
+
+  return prompts;
+};
+
+export const IMG2VID_PROMPTS = createImg2VidPrompts();

@@ -1,9 +1,10 @@
 
+
 export type Mode = 'text' | 'image' | 'txt2img' | 'img2txt' | 'img2vid';
 
 export type PromptCategory = 
   | 'refine' | 'creative' | 'technical' | 'fun' // Original Text
-  | 'business' | 'coding' | 'education' | 'analysis' | 'synthesis' | 'life' // New Text (synthesis + life added)
+  | 'business' | 'coding' | 'education' | 'analysis' | 'synthesis' | 'life' | 'social' // New Text (social added)
   | 'art' | 'photography' | 'design' | 'fantasy' | 'illustration' | 'art_illustration' | 'fashion' // Txt2Img (fashion added)
   | 'editing' | 'filter' | 'infographic' // Image Edit
   | 'caption' | 'extract' | 'convert' | 'object' // Img2Txt

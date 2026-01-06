@@ -58,9 +58,6 @@ const parseResponse = (response: any) => {
   return { text: resultText, imageBase64: resultImage, mediaMimeType: resultMimeType };
 };
 
-/**
- * Modifies or generates text based on input text and a prompt.
- */
 export const modifyTextWithGemini = async (
   inputText: string | string[], 
   userPrompt: string,
@@ -90,9 +87,6 @@ export const modifyTextWithGemini = async (
   }
 };
 
-/**
- * Helper to convert file to base64
- */
 export const fileToGenerativePart = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -114,9 +108,6 @@ export interface ImageInput {
   mimeType: string;
 }
 
-/**
- * Modifies an image based on a prompt.
- */
 export const modifyImageWithGemini = async (
   images: ImageInput[], 
   userPrompt: string,
@@ -155,9 +146,6 @@ export const modifyImageWithGemini = async (
   }
 };
 
-/**
- * Generates an image from text.
- */
 export const generateImageFromText = async (
   userPrompt: string,
   modelName: string = 'gemini-2.5-flash-image',
@@ -212,9 +200,6 @@ export const generateImageFromText = async (
   }
 };
 
-/**
- * Analyzes an image (Image-to-Text).
- */
 export const analyzeImageWithGemini = async (
   images: ImageInput[],
   userPrompt: string,
@@ -252,11 +237,7 @@ export const analyzeImageWithGemini = async (
   }
 };
 
-/**
- * Generates video from image (Veo).
- */
-export const generateVideoFromImage = async (
-  image: ImageInput,
+export const generateVideoFromText = async (
   userPrompt: string,
   modelName: string = 'veo-3.1-generate-preview',
   onProgress?: (status: string) => void,
@@ -273,21 +254,18 @@ export const generateVideoFromImage = async (
     
     if (signal?.aborted) throw new Error("使用者取消了影片生成。");
 
-    // Re-initialize with latest key if using AI Studio selector, otherwise use env key (via helper)
     const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
 
     if (onProgress) onProgress('正在初始化 Veo 模型...');
     
+    // For Txt2Vid, Veo 3.1 Generate Preview supports simple text prompts
     let operation = await freshAi.models.generateVideos({
       model: modelName,
       prompt: userPrompt,
-      image: {
-        imageBytes: image.base64,
-        mimeType: image.mimeType,
-      },
       config: {
         numberOfVideos: 1,
         resolution: '720p', 
+        aspectRatio: '16:9'
       }
     });
 
@@ -307,7 +285,95 @@ export const generateVideoFromImage = async (
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!videoUri) throw new Error("Video generation completed but no URI returned.");
     
-    // Append API key for download if needed, using safe helper
+    const downloadUrl = `${videoUri}&key=${getApiKey()}`;
+    return downloadUrl;
+
+  } catch (error) {
+    console.error("Gemini Text-to-Video API Error:", error);
+    throw error;
+  }
+};
+
+export const generateVideoFromImage = async (
+  images: ImageInput | ImageInput[],
+  userPrompt: string,
+  modelName: string = 'veo-3.1-generate-preview',
+  onProgress?: (status: string) => void,
+  signal?: AbortSignal
+): Promise<string> => {
+  try {
+    if (typeof window !== 'undefined' && (window as any).aistudio) {
+        const aistudio = (window as any).aistudio;
+        const hasKey = await aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+             await aistudio.openSelectKey();
+        }
+    }
+    
+    if (signal?.aborted) throw new Error("使用者取消了影片生成。");
+
+    const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
+
+    if (onProgress) onProgress('正在初始化 Veo 模型...');
+    
+    // Handle multiple images (up to 3 for Veo)
+    const imageList = Array.isArray(images) ? images : [images];
+    let request: any = {
+      model: modelName,
+      prompt: userPrompt,
+      config: {
+        numberOfVideos: 1,
+        resolution: '720p', 
+        aspectRatio: '16:9'
+      }
+    };
+
+    if (imageList.length === 1) {
+        // Single Image Mode
+        request.image = {
+            imageBytes: imageList[0].base64,
+            mimeType: imageList[0].mimeType,
+        };
+    } else {
+        // Multi Image Mode (Reference Images)
+        // Veo supports specific multi-image workflows. 
+        // For general "generateVideos", it usually takes one `image` or `video` as primary input.
+        // However, we will use the `referenceImages` config if supported or fallback to primary image.
+        // Current Veo API simplified: treating first image as start frame or primary reference.
+        
+        // NOTE: If using veo-3.1-generate-preview, we can pass referenceImages in config.
+        const refs = imageList.map(img => ({
+            image: {
+                imageBytes: img.base64,
+                mimeType: img.mimeType
+            },
+            referenceType: 'ASSET' // or 'START_FRAME' etc depending on logic, keeping simple
+        }));
+        
+        // We set the first image as the start frame/primary, and others as references if needed
+        // Or strictly follow the "Multiple reference images" pattern from docs
+        delete request.image;
+        request.config.referenceImages = refs;
+    }
+
+    let operation = await freshAi.models.generateVideos(request);
+
+    while (!operation.done) {
+      if (signal?.aborted) {
+          throw new Error("使用者取消了影片生成。");
+      }
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      operation = await freshAi.operations.getVideosOperation({ operation: operation });
+      
+      const metadata = operation.metadata as any;
+      if (metadata && onProgress) {
+          onProgress(`模型運算中... (狀態: ${metadata.state || 'Processing'})`);
+      }
+    }
+
+    const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
+    if (!videoUri) throw new Error("Video generation completed but no URI returned.");
+    
     const downloadUrl = `${videoUri}&key=${getApiKey()}`;
     return downloadUrl;
 
@@ -317,18 +383,16 @@ export const generateVideoFromImage = async (
   }
 };
 
-/**
- * Suggests keywords.
- */
 export const suggestImageKeywords = async (currentPrompt: string): Promise<string[]> => {
   try {
-    if (!currentPrompt.trim()) return ["Cinematic", "8k", "Lighting", "Detailed"];
+    if (!currentPrompt.trim()) return ["電影感", "8k", "細節豐富", "大師級作品", "光影"];
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `
         Analyze this prompt: "${currentPrompt}".
-        Suggest 5 keywords. Return ONLY comma-separated keywords.
+        Suggest 5 style/lighting/quality keywords in Traditional Chinese (繁體中文). 
+        Return ONLY comma-separated keywords.
       `,
     });
 
@@ -339,90 +403,37 @@ export const suggestImageKeywords = async (currentPrompt: string): Promise<strin
   }
 };
 
-/**
- * Optimizes a user's prompt (Omni-Magic Enhancer).
- * Adapts optimization logic based on the active mode.
- */
 export const optimizeUserPrompt = async (
     currentPrompt: string, 
-    mode: 'text' | 'image' | 'txt2img' | 'img2txt' | 'img2vid' = 'txt2img'
+    mode: 'text' | 'image' | 'txt2img' | 'img2txt' | 'img2vid' | 'txt2vid' = 'txt2img'
 ): Promise<string> => {
     try {
         if (!currentPrompt.trim()) return "";
-
         let systemInstruction = "";
-
         switch (mode) {
             case 'text':
-                systemInstruction = `
-                Act as an expert editor and prompt engineer.
-                Your task is to refine the user's instruction for modifying/generating text.
-                User Input: "${currentPrompt}"
-                Instructions:
-                1. Make the instruction clear, specific, and professional.
-                2. If the input is vague (e.g., "make it shorter"), expand it with specific constraints (e.g., "Summarize the text concisely, retaining key data points, bullet points").
-                3. Maintain the user's original intent but elevate the quality of the request.
-                4. Output ONLY the optimized instruction string in Traditional Chinese.
-                `;
+                systemInstruction = "Refine the user's text generation instruction to be clear, structured, and effective. Output ONLY Traditional Chinese.";
                 break;
-            case 'image': // Image Editing
-                systemInstruction = `
-                Act as a professional photo editor.
-                Your task is to refine the user's instruction for editing an image using AI.
-                User Input: "${currentPrompt}"
-                Instructions:
-                1. Use precise terminology (e.g., "remove background", "color grading", "exposure", "texture").
-                2. Add details about how the edit should look (natural, seamless blending, high contrast).
-                3. If adding objects, specify lighting and perspective matching.
-                4. Output ONLY the optimized instruction string in Traditional Chinese.
-                `;
+            case 'image':
+                systemInstruction = "Refine the user's image editing instruction to be precise and descriptive. Output ONLY Traditional Chinese.";
                 break;
             case 'img2vid':
-                systemInstruction = `
-                Act as a cinematogropher and AI video generation expert (Veo/Sora).
-                Your task is to refine the user's instruction for animating an image.
-                User Input: "${currentPrompt}"
-                Instructions:
-                1. Focus on camera movement (pan, dolly, zoom, truck) and physical motion (flow, wind, gravity).
-                2. Describe the motion vividly (slow-motion, cinematic, smooth transition).
-                3. Keep it under 200 words but highly descriptive.
-                4. Output ONLY the optimized instruction string in Traditional Chinese.
-                `;
+            case 'txt2vid':
+                systemInstruction = "Refine the user's video generation instruction. Focus on movement, physics, and camera angles. Output ONLY Traditional Chinese.";
                 break;
             case 'img2txt':
-                systemInstruction = `
-                Act as an analytical expert.
-                Your task is to refine the user's question or instruction for analyzing an image.
-                User Input: "${currentPrompt}"
-                Instructions:
-                1. Make the question more specific and deep.
-                2. If asking for description, ask for specific details (lighting, mood, objects).
-                3. If OCR, specify format (JSON, markdown).
-                4. Output ONLY the optimized instruction string in Traditional Chinese.
-                `;
+                systemInstruction = "Refine the user's image analysis question to get the most insightful answer. Output ONLY Traditional Chinese.";
                 break;
             case 'txt2img':
             default:
-                systemInstruction = `
-                Act as a professional prompt engineer for AI image generation (Midjourney/Stable Diffusion style).
-                Your task is to rewrite and enhance the following user input into a high-quality, detailed prompt.
-                User Input: "${currentPrompt}"
-                Instructions:
-                1. Keep the original intent and subject.
-                2. Add details about lighting, style, composition, texture, and mood.
-                3. Use high-quality keywords (e.g., 8k, cinematic, photorealistic, octane render).
-                4. If the input is in Chinese, use Traditional Chinese for the description part, but include English technical terms if helpful.
-                5. Output ONLY the optimized prompt text.
-                `;
+                systemInstruction = "Rewrite the user input into a detailed, high-quality AI image generation prompt. Include details about lighting, composition, style, and mood. Output in Traditional Chinese (繁體中文).";
                 break;
         }
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: systemInstruction,
-            config: {
-                temperature: 0.7,
-            }
+            contents: `${systemInstruction}\nUser Input: "${currentPrompt}"`,
+            config: { temperature: 0.7 }
         });
 
         return response.text?.trim() || currentPrompt;
@@ -444,89 +455,180 @@ export interface SuggestionCategory {
     items: PromptSuggestion[];
 }
 
-/**
- * Analyzes content and suggests 30 diverse directions (5 categories * 6 suggestions).
- * Reduced count to prevent JSON truncation.
- */
 export const analyzeContentForSuggestions = async (
-    mode: 'text' | 'image' | 'txt2img' | 'img2txt' | 'img2vid',
+    mode: 'text' | 'image' | 'txt2img' | 'img2txt' | 'img2vid' | 'txt2vid',
     context: string | string[] | ImageInput[]
 ): Promise<SuggestionCategory[]> => {
     try {
         let contents: any[] = [];
-        
-        // Build context
+        let systemPromptAddon = "";
+
         if (Array.isArray(context) && context.length > 0 && typeof context[0] !== 'string') {
             const images = context as ImageInput[];
+            // Multi-image detection
+            if (images.length > 1) {
+                if (mode === 'image') {
+                    // Editing Mode + Multi Images -> Swap/Merge suggestions
+                    systemPromptAddon = `
+                        IMPORTANT: The user has uploaded ${images.length} images for editing.
+                        You MUST generate specific editing suggestions that involve interactions between these images.
+                        
+                        MANDATORY Categories to include (in Chinese):
+                        1. 元素交換 (Element Swapping): e.g., "Swap the faces between image 1 and image 2".
+                        2. 風格遷移 (Style Transfer): e.g., "Apply the art style of image 1 to image 2".
+                        3. 背景替換 (Background Swap): e.g., "Use the background of image 1 for the subject in image 2".
+                        4. 創意合成 (Creative Merge): e.g., "Blend these two images into a double exposure".
+                        
+                        In the "prompt" field, clearly refer to the images as "第一張圖片 (Image 1)", "第二張圖片 (Image 2)".
+                        The suggestions MUST be actionable instructions for an AI image editor.
+                    `;
+                } else {
+                    // Analysis Mode + Multi Images -> Comparison suggestions
+                    systemPromptAddon = " IMPORTANT: There are multiple images. Your suggestions MUST focus on the RELATIONSHIP between them (e.g., comparing them, combining them, sequential storytelling, or finding commonalities). Do not just analyze one image.";
+                }
+            }
             contents = images.map(img => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } }));
         } else if (Array.isArray(context) && typeof context[0] === 'string') {
-            contents = [{ text: (context as string[]).join('\n') }];
+            const textArray = context as string[];
+             // Multi-text detection
+            if (textArray.length > 1) {
+                systemPromptAddon = " IMPORTANT: There are multiple text blocks. Your suggestions MUST focus on COMPARISON, SYNTHESIS, checking consistency, or merging these texts. Do not just analyze one block.";
+            }
+            contents = [{ text: textArray.join('\n\n--- NEXT INPUT ---\n\n') }];
         } else if (typeof context === 'string') {
             contents = [{ text: context }];
         }
 
-        let taskDescription = "";
+        // Mode-Specific Strategy Templates (The "8 Golden Dimensions")
+        let strategyInstructions = "";
         switch (mode) {
-            case 'text':
-                taskDescription = "Analyze this text. Provide 5 distinct categories of analysis/rewriting directions (e.g., Creative, Professional, Critical, Fun, Academic). Under EACH category, provide 6 specific suggestions.";
-                break;
-            case 'image':
-                taskDescription = "Analyze this image. Provide 5 distinct categories of editing/modification ideas (e.g., Filters, Object Changes, Art Styles, Lighting, Background). Under EACH category, provide 6 specific suggestions.";
-                break;
             case 'txt2img':
-                taskDescription = "Based on this text input (or idea), provide 5 distinct artistic categories (e.g., Photorealism, 3D, Illustration, Anime, Abstract). Under EACH category, provide 6 specific image generation prompts.";
-                break;
-            case 'img2txt':
-                taskDescription = "Analyze this image. Provide 5 distinct categories of analysis tasks (e.g., Detailed Description, OCR/Data, Storytelling, Marketing, Technical Analysis). Under EACH category, provide 6 specific prompts.";
+                strategyInstructions = `
+                    Generate 8 distinct categories based on these dimensions:
+                    1. 藝術風格 (Art Style): Specific movements, mediums, artists.
+                    2. 構圖視角 (Composition & Angle): Lens choice, framing, angles.
+                    3. 光影氛圍 (Lighting & Mood): Cinematic, studio, natural, dramatic lighting.
+                    4. 材質細節 (Texture & Details): 8k, realistic, specific material properties.
+                    5. 創意概念 (Creative Concept): Abstract, surreal, metaphorical interpretations.
+                    6. 色彩配置 (Color Palette): Monochromatic, complementary, vibrant, pastel.
+                    7. 藝術家參考 (Artist Reference): Inspired by specific famous artists or photographers.
+                    8. 負面優化 (Negative Constraints): Suggestions for what to avoid/exclude for better quality.
+                `;
                 break;
             case 'img2vid':
-                taskDescription = "Analyze this image. Provide 5 distinct categories of video motion ideas (e.g., Camera Movements, Physics/Elements, VFX, Atmosphere, Narrative). Under EACH category, provide 6 specific prompts.";
+            case 'txt2vid':
+                strategyInstructions = `
+                    Generate 8 distinct categories based on these dimensions:
+                    1. 運鏡技巧 (Camera Movement): Pan, Zoom, Dolly, Drone, Handheld.
+                    2. 物理動態 (Physics & Nature): Fluid dynamics, weather, particle systems.
+                    3. 特效轉場 (VFX & Transitions): Time distortion, morphing, glitch, magical effects.
+                    4. 情感氛圍 (Mood & Atmosphere): Emotional tone, pacing, environmental mood.
+                    5. 敘事發展 (Storytelling): Plot progression, character action sequences.
+                    6. 時間節奏 (Temporal Pacing): Slow motion, timelapse, hyperlapse, reverse.
+                    7. 光影動態 (Lighting Dynamics): Changing light sources, flickering, sunrise/sunset.
+                    8. 鏡頭焦點 (Focus & Depth): Rack focus, depth of field changes, subject tracking.
+                `;
+                break;
+            case 'image': // Editing
+                if (!systemPromptAddon) { // If not multi-image
+                    strategyInstructions = `
+                        Generate 8 distinct categories based on these dimensions:
+                        1. 修復優化 (Fix & Enhance): Restoration, clarity, noise reduction.
+                        2. 風格濾鏡 (Creative Filters): Film looks, artistic filters, color grading.
+                        3. 背景置換 (Background Change): New environments, context shifting.
+                        4. 元素增減 (Add/Remove Elements): Inpainting, outpainting, object manipulation.
+                        5. 創意變形 (Transformation): Material change, shape shifting, stylization.
+                        6. 專業調色 (Color Grading): Teal&Orange, black&white, vivid, cinematic grading.
+                        7. 二次構圖 (Composition Crop): Re-framing, aspect ratio change, centering.
+                        8. 精修細節 (Detailed Retouch): Skin smoothing, eye enhancement, texture fix.
+                    `;
+                }
+                break;
+            case 'img2txt': // Analysis
+                strategyInstructions = `
+                    Generate 8 distinct categories based on these dimensions:
+                    1. 深度解讀 (Deep Meaning): Symbolism, emotion, narrative subtext.
+                    2. 實用資訊 (Practical Data): OCR, translations, estimation, identification.
+                    3. 創意寫作 (Creative Writing): Stories, poems, captions, scripts.
+                    4. 隱藏細節 (Hidden Details): Background elements, subtle clues.
+                    5. 技術分析 (Technical Analysis): Photography settings, composition rules, design principles.
+                    6. 社群行銷 (Social Media): Hashtags, engagement hooks, viral angles.
+                    7. 關鍵字優化 (SEO & Tags): Search terms, categorization, metadata.
+                    8. 教育視角 (Educational): Scientific explanation, historical context, "Explain like I'm 5".
+                `;
+                break;
+            case 'text':
+                strategyInstructions = `
+                    Generate 8 distinct categories based on these dimensions:
+                    1. 語氣轉換 (Tone Shift): Professional, casual, persuasive, empathetic.
+                    2. 結構優化 (Structure): Formatting, summarization, expansion, lists.
+                    3. 邏輯檢查 (Logic & Clarity): Fallacy check, simplification, clarification.
+                    4. 創意改寫 (Creative Spin): Storytelling, metaphors, scriptwriting.
+                    5. 翻譯與擴充 (Translate & Expand): Multilingual, cultural adaptation.
+                    6. 行銷視角 (SEO & Marketing): Copywriting formulas (AIDA), keywords, hooks.
+                    7. 受眾適配 (Audience Adaptation): For kids, experts, seniors, beginners.
+                    8. 反向思考 (Counter-Argument): Devil's advocate, critical analysis, debate.
+                `;
                 break;
         }
 
-        const systemPrompt = `
-        You are a world-class AI Prompt Engineer.
-        Task: ${taskDescription}
-        Constraint: Return a JSON array of exactly 5 objects (Categories).
-        Each Category object must have a 'categoryName' and an 'items' array.
-        The 'items' array must contain exactly 6 Suggestion objects.
-        Schema: 
-        [
-          { 
-            "categoryName": "string", 
-            "items": [
-              { "emoji": "string", "title": "string", "description": "string (keep under 20 words)", "prompt": "string" },
-              ... (6 items)
+        const taskDescription = `
+            You are an expert AI prompt consultant for a "${mode}" application.
+            
+            Task:
+            1. Analyze the provided content carefully.
+            2. Generate EXACTLY 8 distinct categories of prompt suggestions.
+            3. For EACH category, generate EXACTLY 10 high-quality, distinct suggestions.
+            4. TOTAL SUGGESTIONS MUST BE 80.
+            
+            STRATEGY REQUIREMENT:
+            ${strategyInstructions}
+            ${systemPromptAddon}
+
+            CRITICAL LANGUAGE REQUIREMENT:
+            - The "categoryName" MUST be in Traditional Chinese (繁體中文).
+            - The "title" MUST be in Traditional Chinese (繁體中文).
+            - The "description" MUST be in Traditional Chinese (繁體中文). It should explain the RATIONALE (Why is this a good idea based on the input?).
+            - The "prompt" text MUST be an EXPERT-LEVEL prompt (detailed, specific, using weights if applicable).
+
+            The output MUST be valid JSON with this exact schema:
+            [
+              {
+                "categoryName": "創意寫作",
+                "items": [
+                   { "emoji": "🚀", "title": "短標題(中文)", "description": "洞察分析：為什麼建議這樣做？(中文)", "prompt": "Detailed expert prompt..." },
+                   ... (9 more items)
+                ]
+              },
+              ... (7 more categories)
             ]
-          },
-          ... (5 categories)
-        ]
-        Language: Traditional Chinese (zh-TW).
-        The 'prompt' field should be the actual command the user sends to the AI.
-        Ensure diversity and high quality. Keep output concise to ensure valid JSON.
+            
+            Do not wrap in markdown code blocks. Return raw JSON.
         `;
 
-        contents.push({ text: systemPrompt });
-
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: contents },
+            model: 'gemini-2.5-flash', 
+            contents: { 
+                parts: [
+                    ...contents, 
+                    { text: taskDescription }
+                ] 
+            },
             config: { 
                 responseMimeType: "application/json",
-                temperature: 1.0, 
-                maxOutputTokens: 8192 
+                temperature: 0.8, 
             }
         });
 
         const text = response.text;
         if (!text) return [];
         
-        // Clean up markdown code blocks if present
         const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanText);
         
-        return JSON.parse(cleanText);
+        return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
-        console.error("Analysis failed:", e);
+        console.error("Deep analysis failed:", e);
         return [];
     }
 };

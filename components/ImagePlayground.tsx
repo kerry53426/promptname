@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { fileToGenerativePart, modifyImageWithGemini, IWindow, analyzeContentForSuggestions, SuggestionCategory, optimizeUserPrompt } from '../services/geminiService';
 import { IMAGE_PROMPTS, IMAGE_MODELS, ASPECT_RATIOS, IMAGE_CATEGORIES } from '../constants';
-import { ArrowRight, Image as ImageIcon, Upload, Download, Wand2, Settings2, Crop, Clock, Trash2, Plus, X, Sparkles, Eye, Palette, CheckCircle2, Zap, Lightbulb, SplitSquareHorizontal, Search, Mic, MicOff, Dices, Waves } from 'lucide-react';
+import { ArrowRight, Image as ImageIcon, Upload, Download, Wand2, Settings2, Crop, Clock, Trash2, Plus, X, Sparkles, Eye, Palette, CheckCircle2, Zap, Lightbulb, SplitSquareHorizontal, Search, Mic, MicOff, Dices, Waves, Sliders } from 'lucide-react';
 
 interface ImagePlaygroundProps {
   onError: (msg: string) => void;
@@ -11,13 +11,60 @@ interface ImagePlaygroundProps {
 
 // Filter Presets
 const FILTER_PRESETS = [
-  { id: 'original', label: '原圖', prompt: '', filters: { grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturate: 100 } },
-  { id: 'bnw', label: '黑白', prompt: '將這張圖片轉換為高對比的黑白攝影風格，強調光影層次。', filters: { grayscale: 100, sepia: 0, contrast: 120, brightness: 100, saturate: 0 } },
-  { id: 'vintage', label: '復古', prompt: '為圖片添加 1970 年代的復古濾鏡，帶有泛黃的懷舊色調和顆粒感。', filters: { grayscale: 0, sepia: 60, contrast: 90, brightness: 105, saturate: 80 } },
-  { id: 'vivid', label: '鮮豔', prompt: '增強圖片的色彩飽和度與活力，讓顏色看起來更加鮮明流行。', filters: { grayscale: 0, sepia: 0, contrast: 110, brightness: 105, saturate: 150 } },
-  { id: 'cyberpunk', label: '賽博', prompt: '應用賽博龐克 (Cyberpunk) 風格，強調高對比度、霓虹光感與冷冽氛圍。', filters: { grayscale: 0, sepia: 0, contrast: 130, brightness: 110, saturate: 130 } },
-  { id: 'faded', label: '褪色', prompt: '營造一種低飽和度、略帶憂鬱的褪色電影質感 (Matte look)。', filters: { grayscale: 20, sepia: 10, contrast: 90, brightness: 110, saturate: 70 } },
-  { id: 'warm', label: '暖陽', prompt: '模擬「黃金時刻」的溫暖光線，增加畫面中的暖色調與柔和感。', filters: { grayscale: 0, sepia: 30, contrast: 100, brightness: 105, saturate: 110 } }
+  { 
+    id: 'original', 
+    label: '原圖', 
+    prompt: '', 
+    filters: { grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturate: 100, blur: 0, hueRotate: 0, invert: 0, sharpen: 0 } 
+  },
+  { 
+    id: 'bnw', 
+    label: '黑白', 
+    prompt: '將這張圖片轉換為高對比的黑白攝影風格，強調光影層次。', 
+    filters: { grayscale: 100, sepia: 0, contrast: 120, brightness: 100, saturate: 0, blur: 0, hueRotate: 0, invert: 0, sharpen: 20 } 
+  },
+  { 
+    id: 'vintage', 
+    label: '復古', 
+    prompt: '為圖片添加 1970 年代的復古濾鏡，帶有泛黃的懷舊色調和顆粒感。', 
+    filters: { grayscale: 0, sepia: 60, contrast: 90, brightness: 105, saturate: 80, blur: 0, hueRotate: 0, invert: 0, sharpen: 0 } 
+  },
+  { 
+    id: 'vivid', 
+    label: '鮮豔', 
+    prompt: '增強圖片的色彩飽和度與活力，讓顏色看起來更加鮮明流行。', 
+    filters: { grayscale: 0, sepia: 0, contrast: 110, brightness: 105, saturate: 150, blur: 0, hueRotate: 0, invert: 0, sharpen: 10 } 
+  },
+  { 
+    id: 'cyberpunk', 
+    label: '賽博', 
+    prompt: '應用賽博龐克 (Cyberpunk) 風格，強調高對比度、霓虹光感與冷冽氛圍。', 
+    filters: { grayscale: 0, sepia: 0, contrast: 130, brightness: 110, saturate: 130, blur: 0, hueRotate: 15, invert: 0, sharpen: 30 } 
+  },
+  { 
+    id: 'dreamy', 
+    label: '夢幻', 
+    prompt: '增加柔焦和模糊效果，營造夢幻般的氛圍。', 
+    filters: { grayscale: 0, sepia: 10, contrast: 90, brightness: 110, saturate: 90, blur: 4, hueRotate: 0, invert: 0, sharpen: 0 } 
+  },
+  { 
+    id: 'alien', 
+    label: '異色', 
+    prompt: '反轉顏色並調整色相，創造外星般的奇異視覺效果。', 
+    filters: { grayscale: 0, sepia: 0, contrast: 120, brightness: 100, saturate: 150, blur: 0, hueRotate: 180, invert: 0, sharpen: 0 } 
+  },
+  { 
+    id: 'faded', 
+    label: '褪色', 
+    prompt: '營造一種低飽和度、略帶憂鬱的褪色電影質感 (Matte look)。', 
+    filters: { grayscale: 20, sepia: 10, contrast: 90, brightness: 110, saturate: 70, blur: 0, hueRotate: 0, invert: 0, sharpen: 0 } 
+  },
+  { 
+    id: 'warm', 
+    label: '暖陽', 
+    prompt: '模擬「黃金時刻」的溫暖光線，增加畫面中的暖色調與柔和感。', 
+    filters: { grayscale: 0, sepia: 30, contrast: 100, brightness: 105, saturate: 110, blur: 0, hueRotate: 0, invert: 0, sharpen: 0 } 
+  }
 ];
 
 export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incomingPrompt }) => {
@@ -45,7 +92,17 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
 
   // Preview / Editor State
   const [showPreviewEditor, setShowPreviewEditor] = useState(false);
-  const [previewFilters, setPreviewFilters] = useState({ grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturate: 100 });
+  const [previewFilters, setPreviewFilters] = useState({ 
+    grayscale: 0, 
+    sepia: 0, 
+    contrast: 100, 
+    brightness: 100, 
+    saturate: 100,
+    blur: 0,
+    hueRotate: 0,
+    invert: 0,
+    sharpen: 0
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
@@ -195,14 +252,22 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
     let generatedPrompt = "任務：修改圖片\n";
     const changes: string[] = [];
 
+    // Basic
+    if (previewFilters.brightness !== 100) changes.push(`調整亮度為 ${previewFilters.brightness}%。`);
+    if (previewFilters.contrast !== 100) changes.push(`調整對比度為 ${previewFilters.contrast}%。`);
+    if (previewFilters.saturate !== 100) changes.push(`調整飽和度為 ${previewFilters.saturate}%。`);
+    
+    // Color & Effects
     if (previewFilters.grayscale > 50) changes.push("將圖片轉換為黑白/灰階模式 (Black and White)。");
     if (previewFilters.sepia > 50) changes.push("應用復古懷舊的棕褐色濾鏡 (Sepia filter)。");
-    if (previewFilters.contrast > 120) changes.push("顯著增加圖片對比度。");
-    if (previewFilters.brightness > 120) changes.push("增加圖片亮度。");
-    if (previewFilters.saturate > 120) changes.push("增加色彩飽和度。");
-    if (previewFilters.saturate < 50) changes.push("降低飽和度。");
+    if (previewFilters.hueRotate !== 0) changes.push(`調整色相 (Hue Rotate) ${previewFilters.hueRotate} 度。`);
+    if (previewFilters.invert > 0) changes.push("反轉顏色 (Invert Colors)。");
+    
+    // Details
+    if (previewFilters.blur > 0) changes.push(`增加模糊效果 (Blur ${previewFilters.blur}px)，使畫面柔和。`);
+    if (previewFilters.sharpen > 0) changes.push(`銳化圖片 (Sharpen)，增強細節與邊緣清晰度。`);
 
-    if (changes.length === 0) { onError("預覽設定未包含明顯變化。"); return; }
+    if (changes.length === 0) { onError("預覽設定與原圖一致，未包含明顯變化。"); return; }
 
     generatedPrompt += "指令：\n" + changes.join("\n");
     setPrompt(generatedPrompt);
@@ -313,6 +378,19 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
                           p.prompt.toLowerCase().includes(searchQuery.toLowerCase());
     return searchQuery !== '' ? matchesSearch : (matchesCategory && matchesSearch);
   });
+  
+  // Slider config for clean render
+  const sliders = [
+      { label: '亮度', key: 'brightness', min: 0, max: 200, unit: '%' },
+      { label: '對比', key: 'contrast', min: 0, max: 200, unit: '%' },
+      { label: '飽和', key: 'saturate', min: 0, max: 200, unit: '%' },
+      { label: '模糊', key: 'blur', min: 0, max: 20, unit: 'px' },
+      { label: '色相', key: 'hueRotate', min: 0, max: 360, unit: '°' },
+      { label: '銳化', key: 'sharpen', min: 0, max: 100, unit: '', noPreview: true },
+      { label: '懷舊', key: 'sepia', min: 0, max: 100, unit: '%' },
+      { label: '黑白', key: 'grayscale', min: 0, max: 100, unit: '%' },
+      { label: '反轉', key: 'invert', min: 0, max: 100, unit: '%' },
+  ];
 
   return (
     <div className="flex flex-col h-full gap-6">
@@ -342,7 +420,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
             </div>
           </div>
           
-          {/* Preview Controls Panel (omitted for brevity, same as existing) */}
+          {/* Preview Controls Panel */}
           {showPreviewEditor && selectedFiles.length > 0 && (
             <div className="mb-4 p-4 bg-white/60 dark:bg-slate-700/60 backdrop-blur-md border border-rose-100 dark:border-rose-900 rounded-2xl animate-in slide-in-from-top-2 shadow-inner">
                <div className="flex flex-col gap-4">
@@ -364,17 +442,27 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
 
                  <div className="grid grid-cols-1 pt-2 border-t border-slate-100 dark:border-slate-600">
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Palette size={10}/> 手動調整</h4>
-                      <div className="space-y-2 grid grid-cols-2 gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] w-8 text-slate-500 dark:text-slate-400">黑白</span>
-                          <input type="range" min="0" max="100" value={previewFilters.grayscale} onChange={(e) => setPreviewFilters(p => ({...p, grayscale: Number(e.target.value)}))} className="flex-grow h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-rose-500"/>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] w-8 text-slate-500 dark:text-slate-400">復古</span>
-                          <input type="range" min="0" max="100" value={previewFilters.sepia} onChange={(e) => setPreviewFilters(p => ({...p, sepia: Number(e.target.value)}))} className="flex-grow h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-amber-600"/>
-                        </div>
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Sliders size={10}/> 手動調整</h4>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                        {sliders.map(s => (
+                            <div key={s.key} className="flex items-center gap-2">
+                                <span className="text-[10px] w-8 text-slate-500 dark:text-slate-400 truncate text-right">{s.label}</span>
+                                <input 
+                                    type="range" 
+                                    min={s.min} 
+                                    max={s.max} 
+                                    value={(previewFilters as any)[s.key]} 
+                                    onChange={(e) => setPreviewFilters(p => ({...p, [s.key]: Number(e.target.value)}))} 
+                                    className="flex-grow h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                                    title={s.noPreview ? "僅影響生成提示詞，無即時預覽" : ""}
+                                />
+                                <span className="text-[9px] w-6 text-slate-400 font-mono text-right">
+                                    {(previewFilters as any)[s.key]}{s.unit}
+                                </span>
+                            </div>
+                        ))}
                       </div>
+                      <div className="text-[9px] text-slate-400 text-center mt-1">* 部分效果 (如銳化) 僅在生成時生效，無即時預覽。</div>
                     </div>
                  </div>
                  <button onClick={generatePromptFromPreview} className="mt-2 w-full py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-rose-500/30 hover:-translate-y-0.5 active:scale-95">
@@ -406,7 +494,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
                       alt={`Input ${index + 1}`} 
                       className="max-w-full max-h-full object-contain"
                       style={showPreviewEditor ? {
-                        filter: `grayscale(${previewFilters.grayscale}%) sepia(${previewFilters.sepia}%) contrast(${previewFilters.contrast}%) brightness(${previewFilters.brightness}%) saturate(${previewFilters.saturate}%)`
+                        filter: `grayscale(${previewFilters.grayscale}%) sepia(${previewFilters.sepia}%) contrast(${previewFilters.contrast}%) brightness(${previewFilters.brightness}%) saturate(${previewFilters.saturate}%) blur(${previewFilters.blur}px) hue-rotate(${previewFilters.hueRotate}deg) invert(${previewFilters.invert}%)`
                       } : {}}
                     />
                     <button onClick={(e) => { e.stopPropagation(); removeFile(index); }} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-10 hover:scale-110 shadow-lg translate-y-2 group-hover:translate-y-0">
@@ -527,7 +615,7 @@ export const ImagePlayground: React.FC<ImagePlaygroundProps> = ({ onError, incom
 
                       {/* Suggestions Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
-                          {suggestionCategories[activeSuggestionCategory]?.items.map((s, i) => (
+                          {suggestionCategories[activeSuggestionCategory]?.items?.map((s, i) => (
                               <button
                                   key={i}
                                   onClick={() => {

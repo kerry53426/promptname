@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { TextPlayground } from './components/TextPlayground';
 import { ImagePlayground } from './components/ImagePlayground';
@@ -32,7 +33,6 @@ export default function App() {
     }
   }, [isDark]);
 
-  // Clear error after 5 seconds
   const handleError = (msg: string) => {
     setError(msg);
     setTimeout(() => setError(null), 5000);
@@ -118,7 +118,6 @@ export default function App() {
     }
   };
 
-  // Improved dynamic background classes for a more vibrant, modern look
   const getBackgroundClass = () => {
     switch(mode) {
       case 'text': return 'from-blue-100 via-indigo-100 to-violet-100 dark:from-slate-950 dark:via-indigo-950/40 dark:to-slate-950';
@@ -151,54 +150,19 @@ export default function App() {
           <div className="flex items-center gap-4">
              {/* Navigation Tabs */}
              <div className="flex items-center p-1.5 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-white/40 dark:border-slate-700/50 backdrop-blur-md shadow-sm gap-1 overflow-x-auto scrollbar-none max-w-[200px] sm:max-w-none">
-              <button
-                onClick={() => setMode('text')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                  mode === 'text' 
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-800' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
+              <button onClick={() => setMode('text')} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${mode === 'text' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-800' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
                 <Type size={16} /> <span className="hidden sm:inline">文字</span>
               </button>
-              <button
-                onClick={() => setMode('image')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                  mode === 'image' 
-                    ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-500 dark:text-rose-300 shadow-sm border border-rose-100 dark:border-rose-800' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
+              <button onClick={() => setMode('image')} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${mode === 'image' ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-500 dark:text-rose-300 shadow-sm border border-rose-100 dark:border-rose-800' : 'text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
                 <ImageIcon size={16} /> <span className="hidden sm:inline">修圖</span>
               </button>
-              <button
-                onClick={() => setMode('txt2img')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                  mode === 'txt2img' 
-                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 shadow-sm border border-emerald-100 dark:border-emerald-800' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
+              <button onClick={() => setMode('txt2img')} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${mode === 'txt2img' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 shadow-sm border border-emerald-100 dark:border-emerald-800' : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
                 <Wand2 size={16} /> <span className="hidden sm:inline">文生圖</span>
               </button>
-              <button
-                onClick={() => setMode('img2txt')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                  mode === 'img2txt' 
-                    ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-500 dark:text-amber-300 shadow-sm border border-amber-100 dark:border-amber-800' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
+              <button onClick={() => setMode('img2txt')} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${mode === 'img2txt' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-500 dark:text-amber-300 shadow-sm border border-amber-100 dark:border-amber-800' : 'text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
                 <ScanSearch size={16} /> <span className="hidden sm:inline">圖轉文</span>
               </button>
-              <button
-                onClick={() => setMode('img2vid')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                  mode === 'img2vid' 
-                    ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-500 dark:text-violet-300 shadow-sm border border-violet-100 dark:border-violet-800' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
+              <button onClick={() => setMode('img2vid')} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${mode === 'img2vid' ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-500 dark:text-violet-300 shadow-sm border border-violet-100 dark:border-violet-800' : 'text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
                 <Video size={16} /> <span className="hidden sm:inline">影片</span>
               </button>
             </div>
